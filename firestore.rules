@@ -1,0 +1,109 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if user belongs to the same organization as the resource
+    function isSameOrg(orgId) {
+      return isSignedIn() && getUserOrgId() == orgId;
+    }
+    
+    // Fetch the requester's Org ID (Custom Claim or User Doc lookup - assuming User Doc for now for simplicity, 
+    // though Custom Claims are better for performance. We'll use get() on user doc.)
+    function getUserOrgId() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data.organizationId;
+    }
+    
+    function hasRole(roleName) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data.role == roleName;
+    }
+
+    // --- Organizations ---
+    match /organizations/{orgId} {
+      allow read: if isSignedIn() && (
+          resource.data.members.hasAny([request.auth.uid]) || 
+          resource.data.adminUserId == request.auth.uid
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.adminUserId == request.auth.uid;
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      // 1. My own profile
+      // 2. Colleague in same Org (for Team Management)
+      allow read: if isSignedIn() && (
+          request.auth.uid == userId || 
+          isSameOrg(resource.data.organizationId)
+      ); 
+      // Users can edit their own profile
+      // (TODO: Allow Admins to edit roles of their members)
+      allow write: if request.auth.uid == userId || (
+          isSameOrg(resource.data.organizationId) && hasRole('admin')
+      );
+    }
+    
+    // --- Audit Logs (Read-only for Admins/Owners, Write by System only) ---
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn() && (hasRole('admin') || hasRole('owner'));
+      allow write: if false; // Only Cloud Functions should write here
+    }
+
+    // --- Transport Jobs ---
+    match /transportJobs/{jobId} {
+      // READ: 
+      // 1. Suppliers can see jobs they created.
+      // 2. Haulers (Any role) in the Assigned Org can see the job.
+      // 3. Open market jobs might need broader visibility (simplified here).
+      allow read: if isSignedIn() && (
+        resource.data.supplierId == request.auth.uid || 
+        resource.data.status == 'open' || 
+        (resource.data.haulerOrgId != null && isSameOrg(resource.data.haulerOrgId))
+      );
+
+      // CREATE: Only Suppliers
+      allow create: if isSignedIn() 
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.paymentStatus == 'PENDING';
+
+      // UPDATE: Role-Based Logic
+      allow update: if isSignedIn() && (
+        
+        // Scenario A: Supplier Edits details (Only if OPEN)
+        (resource.data.supplierId == request.auth.uid 
+         && resource.data.status == 'open'
+         && request.resource.data.status == 'open'
+        ) ||
+        
+        // Scenario B: Dispatcher Assigns a Driver (Assigned -> Assigned)
+        // Must belong to the Assigned Org AND be a Dispatcher (or Owner/Admin)
+        (resource.data.haulerOrgId != null 
+         && isSameOrg(resource.data.haulerOrgId)
+         && (hasRole('dispatcher') || hasRole('owner') || hasRole('admin'))
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedDriverId', 'assignedDriverName', 'assignedBy'])
+        ) ||
+
+        // Scenario C: Driver (or Assigned Hauler) updates Status
+        // Driver must be the assigned driver.
+        (resource.data.assignedDriverId == request.auth.uid
+         && (
+            // Pickup: Assigned -> In Transit
+            (resource.data.status == 'assigned' && request.resource.data.status == 'in_transit') ||
+            // Deliver: In Transit -> Delivered (requires ePOD)
+            (resource.data.status == 'in_transit' && request.resource.data.status == 'delivered' && request.resource.data.ePOD_url != null)
+         )
+        )
+      );
+      
+      // PREVENT updating sensitive payment fields via Client SDK
+      // stripePaymentIntentId, paymentStatus, payoutId
+    }
+  }
+}

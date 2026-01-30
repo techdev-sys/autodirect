@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #F8FAFC !important;
+  /* Light Slate - Force Override */
+  color: #000000 !important;
+  /* Force Pure Black Text */
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar Styling for Webkit */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Fallback / Helper Utilities matching new theme */
+@layer utilities {
+  .bg-background {
+    background-color: #F8FAFC;
+  }
+
+  .bg-surface {
+    background-color: #FFFFFF;
+  }
+
+  .text-text-main {
+    color: #0F172A;
+  }
+
+  .text-text-muted {
+    color: #64748B;
+  }
+
+  .glass-effect {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-glass;
+  }
+
+  .premium-card {
+    @apply bg-white rounded-[2rem] border border-slate-100 shadow-premium hover:shadow-premium-hover transition-all duration-500;
+  }
+
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent;
+  }
+}
+
+::selection {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: #2563EB;
+}
+
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
