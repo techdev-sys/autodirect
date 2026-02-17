@@ -1,257 +1,277 @@
 import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, db } from '../firebaseConfig';
-import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { ShieldCheck, Truck, Mail, Activity, Globe, Zap, ArrowRight, Lock, ChevronRight, User, Smartphone } from 'lucide-react';
-
-const LiveTicker = () => {
-    const messages = [
-        "LIVE: 48 New Loads Available",
-        "DISPATCH: Harare → Bulawayo Assigned",
-        "NETWORK: Regional Coverage 100%",
-        "SECURE: Instant Digital Payouts"
-    ];
-    const [index, setIndex] = useState(0);
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setIndex((prev) => (prev + 1) % messages.length);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, []);
-
-    return (
-        <div className="flex items-center space-x-2 bg-slate-900 text-white px-5 py-2 rounded-full shadow-2xl shadow-slate-900/20 animate-in fade-in zoom-in duration-700 mx-auto w-fit mb-10 border border-white/10">
-            <Zap className="w-3.5 h-3.5 text-primary fill-primary animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-                {messages[index]}
-            </span>
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping ml-1"></div>
-        </div>
-    );
-};
+import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { Smartphone, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const LoginPage = () => {
-    const [authMode, setAuthMode] = useState('options');
     const [isSignUp, setIsSignUp] = useState(false);
-
-    // Auth State
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [fullName, setFullName] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleGoogleLogin = async () => {
-        try {
-            await signInWithPopup(auth, googleProvider);
-        } catch (err) {
-            setError(err.message);
+    // Auth sub-modes
+    const [showPhone, setShowPhone] = useState(false);
+
+    // Form inputs
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [confirmationResult, setConfirmationResult] = useState(null);
+
+    useEffect(() => {
+        if (showPhone && !window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'invisible'
+            });
         }
-    };
+    }, [showPhone]);
 
     const handleEmailAuth = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
+
         try {
             if (isSignUp) {
-                // Create User
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                // Update Profile
-                await updateProfile(user, {
-                    displayName: fullName,
-                });
-
-                // Save extended details to Firestore
-                await setDoc(doc(db, "users", user.uid), {
-                    uid: user.uid,
-                    displayName: fullName,
-                    email: email,
-                    phoneNumber: phoneNumber,
-                    createdAt: new Date().toISOString(),
-                    role: 'user' // Default to user, selected later in WelcomePage
-                });
-
+                toast.success("Account created!");
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
+                toast.success("Welcome back!");
             }
         } catch (err) {
             console.error(err);
-            setError(err.message);
+            setError(err.code === 'auth/user-not-found' ? 'No account found' :
+                err.code === 'auth/wrong-password' ? 'Incorrect password' : err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePhoneSignIn = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        try {
+            const appVerifier = window.recaptchaVerifier;
+            const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+            setConfirmationResult(confirmation);
+            toast.success("Verification code sent!");
+        } catch (err) {
+            setError("Failed to send code. Ensure number format is +263...");
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyCode = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        try {
+            await confirmationResult.confirm(verificationCode);
+            toast.success("Phone verified!");
+        } catch (err) {
+            setError("Invalid verification code");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        try {
+            await signInWithPopup(auth, googleProvider);
+            toast.success("Signed in with Google");
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-900 selection:bg-primary/10">
+        <div className="min-h-screen bg-white bg-grid-slate flex flex-col items-center justify-center p-6 relative font-sans">
+            <div id="recaptcha-container"></div>
 
-            {/* Ambient Background - Premium & Dynamic */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-blue-100/30 rounded-full blur-[120px] animate-pulse-slow"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-indigo-100/30 rounded-full blur-[120px]"></div>
-            </div>
+            {/* Main Unified Card */}
+            <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl relative z-10">
 
-            {/* App Container */}
-            <div className="w-full max-w-md relative z-10 flex flex-col items-center">
-
-                {/* Header Section */}
-                <div className="text-center mb-10 w-full">
-                    <LiveTicker />
-
-                    <div className="relative inline-block mb-8 shadow-premium rounded-[2.5rem] group cursor-pointer hover:scale-105 transition-all duration-700">
-                        <div className="relative bg-white rounded-[2rem] w-28 h-28 flex items-center justify-center border border-slate-100 overflow-hidden shadow-inner">
-                            <img src="/app-logo.png" alt="AutoDirect" className="w-full h-full object-cover p-2" />
-                        </div>
+                {/* Branding */}
+                <div className="flex flex-col items-center mb-10">
+                    <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mb-4">
+                        <div className="w-6 h-6 bg-orange-500 rounded-sm"></div>
                     </div>
-
-                    <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">
-                        Auto<span className="text-primary tracking-[-0.05em]">Direct</span>
-                    </h1>
-                    <p className="text-slate-400 font-black text-[10px] tracking-[0.3em] uppercase opacity-80">
-                        Logistics Operating System
-                    </p>
+                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">AutoDirect</h1>
+                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-slate-400 mt-2">Logistics Operating System</p>
                 </div>
 
-                {/* Main Action Card */}
-                <div className="w-full bg-white/70 backdrop-blur-2xl border border-white rounded-[2.5rem] p-10 shadow-premium">
+                {error && (
+                    <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
+                        {error}
+                    </div>
+                )}
 
-                    {/* Error Message */}
-                    {error && (
-                        <div className="mb-8 p-4 bg-red-50 text-red-600 text-xs font-bold text-center rounded-2xl border border-red-100 animate-in shake duration-500">
-                            <Activity className="w-4 h-4 inline mr-2" />
-                            {error}
-                        </div>
-                    )}
-
-                    <div className="space-y-5">
-                        {/* Google Sign In */}
-                        <button
-                            onClick={handleGoogleLogin}
-                            className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95 shadow-sm group"
-                        >
-                            <img src="https://www.google.com/favicon.ico" alt="G" className="w-4 h-4 mr-4 group-hover:scale-110 transition-transform" />
-                            <span className="tracking-wide text-sm whitespace-nowrap">Continue with Google</span>
-                        </button>
-
-                        {/* Divider */}
-                        {authMode === 'options' && (
-                            <div className="relative py-4">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-slate-100"></div>
-                                </div>
-                                <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em]">
-                                    <span className="bg-white px-4 text-slate-300 font-bold">Security Pass</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {authMode === 'options' && (
+                {/* Combined Auth Section */}
+                {!showPhone ? (
+                    <div className="space-y-6">
+                        {/* Tabs for Email Mode */}
+                        <div className="flex p-1 bg-slate-50 rounded-2xl border border-slate-100">
                             <button
-                                onClick={() => setAuthMode('email')}
-                                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/20 hover:bg-black transition-all active:scale-95 flex items-center justify-center group"
+                                onClick={() => setIsSignUp(false)}
+                                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${!isSignUp ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400'}`}
                             >
-                                <Mail className="w-4 h-4 mr-3 group-hover:rotate-12 transition-transform" />
-                                <span className="text-sm">Access with Email</span>
+                                Log In
                             </button>
-                        )}
+                            <button
+                                onClick={() => setIsSignUp(true)}
+                                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isSignUp ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400'}`}
+                            >
+                                Sign Up
+                            </button>
+                        </div>
 
                         {/* Email Form */}
-                        {authMode === 'email' && (
-                            <form onSubmit={handleEmailAuth} className="space-y-5 animate-in slide-in-from-bottom-6 fade-in duration-500">
-                                <div className="space-y-3">
-                                    {isSignUp && (
-                                        <>
-                                            <div className="group relative">
-                                                <User className="absolute left-5 top-5 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Full Name"
-                                                    value={fullName}
-                                                    onChange={(e) => setFullName(e.target.value)}
-                                                    className="w-full pl-12 pr-5 py-5 bg-slate-50/50 border border-slate-200 rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all font-bold text-sm"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="group relative">
-                                                <Smartphone className="absolute left-5 top-5 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                                                <input
-                                                    type="tel"
-                                                    placeholder="Phone Number"
-                                                    value={phoneNumber}
-                                                    onChange={(e) => setPhoneNumber(e.target.value)}
-                                                    className="w-full pl-12 pr-5 py-5 bg-slate-50/50 border border-slate-200 rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all font-bold text-sm"
-                                                    required
-                                                />
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <div className="group relative">
-                                        <Mail className="absolute left-5 top-5 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                                        <input
-                                            type="email"
-                                            placeholder="Email Address"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full pl-12 pr-5 py-5 bg-slate-50/50 border border-slate-200 rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all font-bold text-sm"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="group relative">
-                                        <Lock className="absolute left-5 top-5 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                                        <input
-                                            type="password"
-                                            placeholder="Password"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full pl-12 pr-5 py-5 bg-slate-50/50 border border-slate-200 rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all font-bold text-sm"
-                                            required
-                                        />
-                                    </div>
+                        <form onSubmit={handleEmailAuth} className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Email</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                                    <input
+                                        type="email"
+                                        placeholder="name@company.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
+                                        required
+                                    />
                                 </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-primary/30 hover:bg-primary-hover hover:-translate-y-1 active:scale-95 flex items-center justify-center group transition-all"
-                                >
-                                    <span>{isSignUp ? 'Create Corporate ID' : 'Authorize Access'}</span>
-                                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                                </button>
-
-                                <div className="flex items-center justify-between pt-4">
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                                    <input
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
+                            >
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>{isSignUp ? 'Create Corporate Account' : 'Access Dashboard'}</span>}
+                            </button>
+                        </form>
+                    </div>
+                ) : (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* Phone Auth Flow */}
+                        {!confirmationResult ? (
+                            <form onSubmit={handlePhoneSignIn} className="space-y-6">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Phone Number</label>
+                                    <div className="relative group">
+                                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                                        <input
+                                            type="tel"
+                                            placeholder="+263 77 123 4567"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value)}
+                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 mt-2 font-medium">Identity code will be sent via encrypted SMS.</p>
+                                </div>
+                                <div className="flex space-x-3">
                                     <button
                                         type="button"
-                                        onClick={() => setAuthMode('options')}
-                                        className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-primary transition-colors"
+                                        onClick={() => setShowPhone(false)}
+                                        className="flex-1 py-4 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all"
                                     >
-                                        <ChevronRight className="w-3 h-3 inline rotate-180 mr-1" />
-                                        Methods
+                                        Cancel
                                     </button>
                                     <button
-                                        type="button"
-                                        onClick={() => setIsSignUp(!isSignUp)}
-                                        className="text-primary text-[10px] font-black uppercase tracking-[0.2em] bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-all border border-primary/10"
+                                        type="submit"
+                                        disabled={loading}
+                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm flex items-center justify-center space-x-2"
                                     >
-                                        {isSignUp ? 'Log In Instead' : 'Register New ID'}
+                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Send Code</span>}
                                     </button>
                                 </div>
                             </form>
+                        ) : (
+                            <form onSubmit={handleVerifyCode} className="space-y-6">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Verification Code</label>
+                                    <input
+                                        type="text"
+                                        placeholder="000000"
+                                        maxLength={6}
+                                        value={verificationCode}
+                                        onChange={(e) => setVerificationCode(e.target.value)}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 text-center tracking-[0.5em] font-black"
+                                        required
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-sm flex items-center justify-center space-x-2 shadow-xl shadow-green-500/20"
+                                >
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Verify Account</span>}
+                                </button>
+                            </form>
                         )}
                     </div>
-                </div>
+                )}
 
-                {/* Bottom Trust Pills */}
-                <div className="mt-12 flex items-center justify-center space-x-6">
-                    <div className="flex items-center px-4 py-2 rounded-full bg-white border border-slate-100 shadow-sm opacity-60 hover:opacity-100 transition-opacity cursor-default">
-                        <ShieldCheck className="w-3 h-3 text-primary mr-2" />
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">ISO 27001 Secure</span>
-                    </div>
-                    <div className="flex items-center px-4 py-2 rounded-full bg-white border border-slate-100 shadow-sm opacity-60 hover:opacity-100 transition-opacity cursor-default">
-                        <Globe className="w-3 h-3 text-primary mr-2" />
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Regional Network</span>
-                    </div>
+                {/* Social Below Form (Always Visible if not in verify step) */}
+                {(!confirmationResult || !showPhone) && (
+                    <>
+                        <div className="relative my-8">
+                            <div className="absolute inset-0 flex items-center px-10">
+                                <div className="w-full border-t border-slate-100"></div>
+                            </div>
+                            <span className="relative bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest block mx-auto w-fit">External Identity</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={handleGoogleLogin}
+                                className="flex items-center justify-center space-x-2 py-3.5 bg-black text-white rounded-2xl hover:bg-slate-900 active:scale-95 transition-all"
+                            >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 1.56-1.56 2.73-3.21 2.73-2.1 0-3.81-1.71-3.81-3.81s1.71-3.81 3.81-3.81c.84 0 1.65.3 2.28.81l2.13-2.13C18.66 6.54 16.5 5.4 14.18 5.4c-4.41 0-8 3.59-8 8s3.59 8 8 8c4.59 0 7.83-3.03 7.83-7.83 0-.48-.06-.93-.15-1.37z" />
+                                </svg>
+                                <span className="text-xs font-bold">Google</span>
+                            </button>
+                            <button
+                                onClick={() => setShowPhone(true)}
+                                className="flex items-center justify-center space-x-2 py-3.5 bg-white border border-slate-200 text-slate-900 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all"
+                            >
+                                <Smartphone className="w-4 h-4" />
+                                <span className="text-xs font-bold">Phone</span>
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                <div className="mt-10 text-center">
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
+                        Powered By TechDevs
+                    </p>
                 </div>
             </div>
         </div>

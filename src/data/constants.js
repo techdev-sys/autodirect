@@ -1,12 +1,11 @@
-
 import {
     Search,
     User,
-    ClipboardList,
-    Wrench,
+    ShieldCheck,
+    Box,
+    Navigation,
     CheckCircle,
-    Car,
-    ShieldCheck
+    DollarSign
 } from 'lucide-react';
 
 export const SERVICE_TYPES = [
@@ -21,9 +20,39 @@ export const SERVICE_TYPES = [
 export const PLATFORM_FEE_RATE = 0.025; // 2.5% from each side (Total 5%)
 
 export const STATUS_STEPS = {
-    'open': { label: 'Search Active', color: 'bg-primary/10 text-primary border-primary/20', icon: Search },
-    'assigned': { label: 'Driver Assigned', color: 'bg-secondary/10 text-secondary border-secondary/20', icon: User },
-    'transit': { label: 'In Transit', color: 'bg-blue-900/20 text-blue-400 border-blue-900/30', icon: Wrench },
-    'delivered': { label: 'Cargo Delivered', color: 'bg-green-900/20 text-green-400 border-green-900/30', icon: CheckCircle },
-    'paid': { label: 'Funds Released', color: 'bg-surface text-text-muted border-white/10', icon: ShieldCheck },
+    'open': {
+        label: 'Network Visible',
+        color: 'bg-orange-100 text-orange-700 border-orange-200 shadow-sm shadow-orange-50',
+        icon: Search
+    },
+    'secured': {
+        label: 'Contract Secured',
+        color: 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200',
+        icon: ShieldCheck
+    },
+    'assigned': {
+        label: 'Fleet Assigned',
+        color: 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm shadow-amber-50',
+        icon: User
+    },
+    'loading': {
+        label: 'Payload Loading',
+        color: 'bg-orange-500 text-white border-orange-600 shadow-sm shadow-orange-200',
+        icon: Box
+    },
+    'in_transit': {
+        label: 'Mission Active',
+        color: 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm shadow-orange-50',
+        icon: Navigation
+    },
+    'delivered': {
+        label: 'Node Fulfillment',
+        color: 'bg-green-50 text-green-700 border-green-200 shadow-sm shadow-green-50',
+        icon: CheckCircle
+    },
+    'paid': {
+        label: 'Asset Liquidity',
+        color: 'bg-slate-800 text-white border-slate-700 shadow-md',
+        icon: DollarSign
+    },
 };

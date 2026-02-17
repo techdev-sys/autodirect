@@ -7,20 +7,11 @@ export default {
     theme: {
         extend: {
             colors: {
-                background: '#F8FAFC', // Slate 50
-                surface: '#FFFFFF',
-                primary: {
-                    DEFAULT: '#2563EB', // Blue 600
-                    hover: '#1D4ED8',
-                    light: '#DBEAFE',
-                },
-                secondary: {
-                    DEFAULT: '#F59E0B', // Amber 500
-                    hover: '#D97706',
-                    light: '#FEF3C7',
-                },
-                accent: '#8B5CF6',     // Violet 500
-                success: '#10B981',    // Emerald 500
+                'theme-bg': '#EFEBE3',
+                'theme-card-dark': '#1A1A1A',
+                'theme-accent-yellow': '#FFD64B',
+                'theme-accent-red': '#FF7878',
+                'theme-card-beige': '#D6CDC2',
                 slate: {
                     50: '#F8FAFC',
                     100: '#F1F5F9',
@@ -40,12 +31,27 @@ export default {
             animation: {
                 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'float': 'float 3s ease-in-out infinite',
+                'blob': 'blob 7s infinite',
             },
             keyframes: {
                 float: {
                     '0%, 100%': { transform: 'translateY(0)' },
                     '50%': { transform: 'translateY(-10px)' },
-                }
+                },
+                blob: {
+                    "0%": {
+                        transform: "translate(0px, 0px) scale(1)",
+                    },
+                    "33%": {
+                        transform: "translate(30px, -50px) scale(1.1)",
+                    },
+                    "66%": {
+                        transform: "translate(-20px, 20px) scale(0.9)",
+                    },
+                    "100%": {
+                        transform: "translate(0px, 0px) scale(1)",
+                    },
+                },
             },
             boxShadow: {
                 'premium': '0 10px 40px -10px rgba(0, 0, 0, 0.05)',

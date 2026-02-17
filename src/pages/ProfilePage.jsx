@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { User, Truck, Building, Save, CheckCircle, Shield, AlertCircle, Camera, Upload, Briefcase, MapPin } from 'lucide-react';
 import ProfileCard from '../components/ProfileCard';
 import InputGroup from '../components/InputGroup';
+import TeamManagementSection from '../components/TeamManagementSection';
 import { toast } from 'react-hot-toast';
 
 const ProfilePage = ({ user, onClose }) => {
@@ -60,8 +61,9 @@ const ProfilePage = ({ user, onClose }) => {
                         hauler: { ...prev.hauler, ...data.hauler },
                         supplier: { ...prev.supplier, ...data.supplier }
                     }));
-                    // Set preview based on saved role if available
-                    if (data.role) setPreviewRole(data.role);
+                    // Use userType for identity preview, fallback to role for legacy
+                    if (data.userType) setPreviewRole(data.userType);
+                    else if (data.role && data.role !== 'admin') setPreviewRole(data.role);
                 }
             } catch (error) {
                 console.error("Error fetching profile:", error);
@@ -80,7 +82,7 @@ const ProfilePage = ({ user, onClose }) => {
             await setDoc(userRef, {
                 uid: user.uid,
                 email: user.email,
-                role: previewRole,
+                userType: previewRole, // Identity saved here
                 universal: profileData.universal,
                 hauler: profileData.hauler,
                 supplier: profileData.supplier,
@@ -356,6 +358,17 @@ const ProfilePage = ({ user, onClose }) => {
                                     />
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {/* Team Management Form */}
+                    {activeTab === 'team' && isDispatcher && (
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in slide-in-from-left-4">
+                            <div className="flex items-center space-x-2 mb-4">
+                                <Users className="w-5 h-5 text-blue-600" />
+                                <h3 className="font-bold text-lg text-slate-800">Fleet Operatives</h3>
+                            </div>
+
+                            <TeamManagementSection userProfile={{ ...user, ...profileData }} />
                         </div>
                     )}
                 </div>

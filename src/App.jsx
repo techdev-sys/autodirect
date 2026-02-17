@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ShieldCheck, LogOut, Settings, Users, Package, Truck, Bell, Search, Menu, X } from 'lucide-react';
-import WelcomePage from './pages/WelcomePage';
+import LandingPage from './pages/LandingPage';
 import SupplierDashboard from './pages/SupplierDashboard';
 import HaulerDashboard from './pages/HaulerDashboard';
 import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
 import ProfilePage from './pages/ProfilePage';
 import { NotificationProvider } from './context/NotificationContext';
 import { Toaster, toast } from 'react-hot-toast';
@@ -12,7 +13,7 @@ import TrackingPage from './pages/TrackingPage';
 import CompanySetup from './pages/CompanySetup';
 import TeamManagement from './pages/TeamManagement';
 import { db, auth } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, onSnapshot, query, orderBy, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 // --- Main Dashboard Logic (Protected) ---
@@ -22,6 +23,7 @@ function DashboardApp() {
     const [authLoading, setAuthLoading] = useState(true);
 
     const [role, setRole] = useState(null);
+    const [view, setView] = useState('landing'); // landing
     const [activeTab, setActiveTab] = useState('board');
     const [transportJobs, setTransportJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,18 +33,89 @@ function DashboardApp() {
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
             if (currentUser) {
+                // --- Profile Migration Check (For Admin-Created Drivers) ---
                 const userRef = doc(db, "users", currentUser.uid);
+                const initialSnap = await getDoc(userRef);
+
+                if (!initialSnap.exists() && currentUser.email) {
+                    const q = query(collection(db, "users"), where("email", "==", currentUser.email));
+                    const emailSnap = await getDocs(q);
+
+                    if (!emailSnap.empty) {
+                        const legacyDoc = emailSnap.docs[0];
+                        const legacyData = legacyDoc.data();
+
+                        // Bridge the admin-created doc to the real Auth UID
+                        await setDoc(userRef, {
+                            ...legacyData,
+                            uid: currentUser.uid,
+                            migratedAt: Date.now()
+                        });
+
+                        // --- EXTENDED MIGRATION: Update references ---
+
+                        // 1. Update jobs assigned to this driver
+                        const jobsQ = query(collection(db, "transportJobs"), where("assignedDriverId", "==", legacyDoc.id));
+                        const jobsSnap = await getDocs(jobsQ);
+                        const jobUpdates = jobsSnap.docs.map(jDoc => updateDoc(doc(db, "transportJobs", jDoc.id), {
+                            assignedDriverId: currentUser.uid
+                        }));
+                        await Promise.all(jobUpdates);
+
+                        // 2. Update organization membership
+                        if (legacyData.organizationId) {
+                            const orgRef = doc(db, "organizations", legacyData.organizationId);
+                            const orgSnap = await getDoc(orgRef);
+                            if (orgSnap.exists()) {
+                                await updateDoc(orgRef, {
+                                    members: arrayRemove(legacyDoc.id)
+                                });
+                                await updateDoc(orgRef, {
+                                    members: arrayUnion(currentUser.uid)
+                                });
+                            }
+                        }
+
+                        // Cleanup legacy fake-id doc
+                        await deleteDoc(doc(db, "users", legacyDoc.id));
+                        toast.success("Profile Activated: Welcome to the Fleet!");
+                    }
+                }
+
                 const unsubscribeProfile = onSnapshot(userRef, (doc) => {
                     if (doc.exists()) {
                         const data = doc.data();
                         setUserProfile(data);
-                        // Auto-set role if not set and exists in profile
-                        if (!role && data.role && data.role !== 'user') {
-                            setRole(data.role === 'supplier' ? 'supplier' : 'hauler');
-                            setActiveTab(data.role === 'supplier' ? 'history' : 'board');
+
+                        // Unified Role Detection Logic
+                        // 1. Check explicit userType first (preferred)
+                        // 2. Fall back to functional role
+                        const identity = data.userType || (['supplier', 'hauler', 'driver', 'dispatcher'].includes(data.role) ? data.role : null);
+
+                        if (identity && identity !== 'user') {
+                            if (identity === 'supplier') {
+                                setRole('supplier');
+                                if (!activeTab || activeTab === 'board') setActiveTab('history');
+                            } else if (['hauler', 'driver', 'dispatcher', 'admin', 'owner'].includes(identity)) {
+                                setRole('hauler');
+                                // Refined tab logic: Drivers see 'active' by default, others see 'board'
+                                const defaultTab = identity === 'driver' ? 'active' : 'board';
+                                if (!activeTab || activeTab === 'history' || (activeTab === 'board' && identity === 'driver')) {
+                                    setActiveTab(defaultTab);
+                                }
+                            } else {
+                                // Default to hauler if they have a specialized hauler role but identity wasn't caught
+                                if (data.role && ['dispatcher', 'owner', 'admin'].includes(data.role)) {
+                                    setRole('hauler');
+                                }
+                            }
+                        } else {
+                            // If identity is 'user' or null, we stay on onboarding
+                            setRole(null);
                         }
                     } else {
-                        setUserProfile({ organizationId: null });
+                        setUserProfile({ organizationId: null, role: 'user', userType: 'user' });
+                        setRole(null);
                     }
                     setAuthLoading(false);
                 }, (error) => {
@@ -57,7 +130,7 @@ function DashboardApp() {
             }
         });
         return () => unsubscribeAuth();
-    }, [role]);
+    }, []);
 
     // --- Firebase Real-time Listener for Jobs ---
     useEffect(() => {
@@ -73,7 +146,7 @@ function DashboardApp() {
             setLoading(false);
         }, (error) => {
             console.error("Firebase Jobs Error:", error);
-            toast.error("Connection interrupted. Retrying...");
+            // toast.error("Connection interrupted. Retrying...");
             setLoading(false);
         });
 
@@ -82,6 +155,20 @@ function DashboardApp() {
 
     // --- Actions ---
     const handlePostTransport = async (jobData) => {
+        // Validation check
+        if (!jobData.goodsType || !jobData.departure || !jobData.destination || !jobData.tonnage || !jobData.budget) {
+            toast.error("Manifest Integrity Error: All required nodes must be populated.");
+            return;
+        }
+
+        const numTonnage = parseFloat(jobData.tonnage);
+        const numBudget = parseFloat(jobData.budget);
+
+        if (isNaN(numTonnage) || numTonnage <= 0 || isNaN(numBudget) || numBudget <= 0) {
+            toast.error("Metric Validation Failure: Weight and Budget must be positive integers.");
+            return;
+        }
+
         const loadingToast = toast.loading("Posting load to network...");
         try {
             const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -89,6 +176,8 @@ function DashboardApp() {
 
             await addDoc(collection(db, "transportJobs"), {
                 ...jobData,
+                tonnage: numTonnage,
+                budget: numBudget,
                 status: 'open',
                 supplierId: user.uid,
                 supplierEmail: user.email,
@@ -106,6 +195,17 @@ function DashboardApp() {
     };
 
     const handleEditTransport = async (jobId, updatedData) => {
+        if (updatedData.tonnage) {
+            const num = parseFloat(updatedData.tonnage);
+            if (isNaN(num) || num <= 0) return toast.error("Invalid Payload Weight");
+            updatedData.tonnage = num;
+        }
+        if (updatedData.budget) {
+            const num = parseFloat(updatedData.budget);
+            if (isNaN(num) || num <= 0) return toast.error("Invalid Financial Budget");
+            updatedData.budget = num;
+        }
+
         const loadingToast = toast.loading("Updating load...");
         try {
             const jobRef = doc(db, "transportJobs", jobId);
@@ -120,8 +220,6 @@ function DashboardApp() {
 
     const handleDeleteTransport = async (jobId) => {
         try {
-            // Using toast for confirmation could be complex, keeping confirm for now but styled nicely would be better.
-            // However, the request is for UI/UX improvement, so let's stick to standard confirm but maybe a modal later.
             if (window.confirm("Are you sure you want to delete this job?")) {
                 const loadingToast = toast.loading("Removing load...");
                 await deleteDoc(doc(db, "transportJobs", jobId));
@@ -133,28 +231,47 @@ function DashboardApp() {
         }
     };
 
-    const handleAcceptTransport = async (jobId) => {
-        const loadingToast = toast.loading("Accepting load...");
+    const handleSecureJob = async (jobId) => {
+        const loadingToast = toast.loading("Securing logistics contract...");
         try {
             const haulerOrgId = userProfile?.organizationId;
             if (!haulerOrgId) {
-                toast.error("Subscription required: Join a company to accept loads.", { id: loadingToast });
+                toast.error("Company registration required to secure contracts.", { id: loadingToast });
                 return;
             }
 
             const jobRef = doc(db, "transportJobs", jobId);
             await updateDoc(jobRef, {
-                status: 'assigned',
+                status: 'secured',
                 haulerId: user.uid,
+                haulerName: userProfile.organizationName || userProfile.displayName || user.email || 'Transporter',
                 haulerOrgId: haulerOrgId,
-                haulerEmail: user.email,
+                haulerEmail: user.email || userProfile.email || '',
                 haulerProfile: userProfile,
-                acceptedAt: Date.now()
+                securedAt: Date.now()
             });
-            toast.success("Job accepted! Drive safe.", { id: loadingToast });
+            toast.success("Contract Secured. Please assign assets.", { id: loadingToast });
         } catch (e) {
-            console.error("Error accepting job:", e);
-            toast.error("This load is no longer available.", { id: loadingToast });
+            console.error("Error securing job:", e);
+            toast.error("Load is no longer available.", { id: loadingToast });
+        }
+    };
+
+    const handleAssignJob = async (jobId, driverId, driverName, truckReg) => {
+        const loadingToast = toast.loading("Finalizing asset assignment...");
+        try {
+            const jobRef = doc(db, "transportJobs", jobId);
+            await updateDoc(jobRef, {
+                status: 'assigned',
+                assignedDriverId: driverId,
+                assignedDriverName: driverName,
+                truckRegistration: truckReg,
+                assignedAt: Date.now()
+            });
+            toast.success("Assets Deployed Successfully", { id: loadingToast });
+        } catch (e) {
+            console.error("Error assigning job:", e);
+            toast.error("Assignment failed.", { id: loadingToast });
         }
     };
 
@@ -203,16 +320,9 @@ function DashboardApp() {
         </div>
     );
 
-    // 1. Role Selection
-    if (!role) {
-        return (
-            <WelcomePage
-                onSelectRole={(r) => {
-                    setRole(r);
-                    setActiveTab(r === 'supplier' ? 'post' : 'board');
-                }}
-            />
-        );
+    // 1. Landing Screen
+    if (!user && view === 'landing') {
+        return <LandingPage onGetStarted={() => setView('auth')} />;
     }
 
     // 2. Login
@@ -220,7 +330,25 @@ function DashboardApp() {
         return <LoginPage />;
     }
 
-    // 3. Company Setup Check
+    // NEW: Force Password Reset (Driver Onboarding)
+    if (userProfile?.forcePasswordChange) {
+        return <ForcePasswordChange user={user} onComplete={() => updateDoc(doc(db, "users", user.uid), { forcePasswordChange: false })} />;
+    }
+
+    // 3. Post-Auth Onboarding (Role Selection)
+    if (user && userProfile && (!userProfile.role || userProfile.role === 'user')) {
+        return (
+            <OnboardingPage
+                user={user}
+                onComplete={(r) => {
+                    setRole(r);
+                    setActiveTab(r === 'supplier' ? 'history' : 'board');
+                }}
+            />
+        );
+    }
+
+    // 4. Company Setup Check
     if (userProfile && !userProfile.organizationId) {
         return (
             <div className="min-h-screen bg-slate-50">
@@ -240,7 +368,7 @@ function DashboardApp() {
         );
     }
 
-    // 4. Loading Data
+    // 5. Loading Data
     if (loading) return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -250,12 +378,7 @@ function DashboardApp() {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans text-slate-900 selection:bg-primary/10">
-            {activeTab === 'profile_editor' && (
-                <ProfilePage
-                    user={user}
-                    onClose={() => setActiveTab(role === 'supplier' ? 'history' : 'board')}
-                />
-            )}
+
             {activeTab === 'team_management' && (
                 <div className="fixed inset-0 bg-slate-50 z-50 overflow-y-auto animate-in fade-in duration-300">
                     <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -267,82 +390,28 @@ function DashboardApp() {
                 </div>
             )}
 
-            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <div className="relative group cursor-pointer lg:hover:scale-105 transition-transform" onClick={() => setActiveTab(role === 'supplier' ? 'history' : 'board')}>
-                            <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-blue-400 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-                            <div className="relative w-10 h-10 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
-                                <img src="/app-logo.png" alt="AutoDirect" className="w-full h-full object-cover" />
-                            </div>
-                        </div>
-                        <div className="flex flex-col leading-none">
-                            <span className="font-black text-xl uppercase tracking-tighter text-slate-900">
-                                Auto<span className="text-primary">Direct</span>
-                            </span>
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mt-0.5">Logistics OS</span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                        {/* Dynamic Role Indicator */}
-                        <div className={`hidden md:flex items-center text-[10px] font-black uppercase px-3 py-1.5 rounded-full border shadow-sm transition-all ${role === 'supplier'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-amber-100/50'
-                            : 'bg-blue-50 text-blue-700 border-blue-200 shadow-blue-100/50'
-                            }`}>
-                            {role === 'supplier' ? <Package className="w-3.5 h-3.5 mr-2" /> : <Truck className="w-3.5 h-3.5 mr-2" />}
-                            {role === 'supplier' ? 'Supplier Portal' : 'Hauler Network'}
-                        </div>
-
-                        <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-
-                        {/* Control Center */}
-                        <div className="flex items-center space-x-1.5 bg-slate-50 p-1 rounded-2xl border border-slate-200/60">
-                            {userProfile?.role === 'admin' && (
-                                <button
-                                    onClick={() => setActiveTab('team_management')}
-                                    className={`p-2.5 rounded-xl transition-all ${activeTab === 'team_management' ? 'bg-white text-primary shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-900'}`}
-                                    title="Team Management"
-                                >
-                                    <Users className="w-4 h-4" />
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => setActiveTab('profile_editor')}
-                                className={`p-2.5 rounded-xl transition-all ${activeTab === 'profile_editor' ? 'bg-white text-primary shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-900'}`}
-                                title="Settings"
-                            >
-                                <Settings className="w-4 h-4" />
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    setRole(null);
-                                    toast.success("Switched to role selection");
-                                }}
-                                className="p-2.5 text-slate-500 hover:text-slate-900 rounded-xl transition-all items-center flex"
-                                title="Switch Identity"
-                            >
-                                <Users className="w-4 h-4" />
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    signOut(auth);
-                                    toast.success("Signed out successfully");
-                                }}
-                                className="p-2.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                title="Secure Logout"
-                            >
-                                <LogOut className="w-4 h-4" />
-                            </button>
-                        </div>
+            {activeTab === 'team_management' && (
+                <div className="fixed inset-0 bg-slate-50 z-50 overflow-y-auto animate-in fade-in duration-300">
+                    <div className="max-w-7xl mx-auto p-4 md:p-8">
+                        <button onClick={() => setActiveTab('board')} className="mb-6 flex items-center text-xs font-black uppercase text-slate-400 hover:text-primary transition-colors">
+                            <X className="w-4 h-4 mr-2" /> Close Team View
+                        </button>
+                        <TeamManagement user={{ ...user, ...userProfile }} />
                     </div>
                 </div>
-            </header>
+            )}
 
-            <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8 min-h-[calc(100vh-140px)] animate-in fade-in duration-500">
+            {/* Safety Transition Screen */}
+            {!role && userProfile && userProfile.role !== 'user' && (
+                <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                    <div className="text-center space-y-4">
+                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Intelligence Deck...</p>
+                    </div>
+                </div>
+            )}
+
+            <main className={`${role === 'supplier' ? 'w-full' : role === 'hauler' ? '' : 'max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8 min-h-[calc(100vh-140px)]'} animate-in fade-in duration-500`}>
                 {role === 'supplier' && (
                     <SupplierDashboard
                         activeTab={activeTab}
@@ -351,6 +420,8 @@ function DashboardApp() {
                         onEditJob={handleEditTransport}
                         onDeleteJob={handleDeleteTransport}
                         myJobs={supplierRequests}
+                        user={user}
+                        userProfile={userProfile}
                     />
                 )}
                 {role === 'hauler' && (
@@ -359,7 +430,8 @@ function DashboardApp() {
                         setActiveTab={setActiveTab}
                         availableJobs={availableHauls}
                         myJobs={myHauls}
-                        onAcceptJob={handleAcceptTransport}
+                        onSecureJob={handleSecureJob}
+                        onAssignJob={handleAssignJob}
                         onUpdateStatus={handleUpdateTransportStatus}
                         onExpireJob={handleExpireJob}
                         userProfile={userProfile}
@@ -383,6 +455,73 @@ function DashboardApp() {
     );
 }
 
+const ForcePasswordChange = ({ user, onComplete }) => {
+    const [password, setPassword] = React.useState('');
+    const [confirm, setConfirm] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (password !== confirm) return toast.error("Passwords do not match");
+        if (password.length < 6) return toast.error("Password must be at least 6 characters");
+
+        setLoading(true);
+        try {
+            // In production, we'd update Auth password. For prototype, we update Firestore flag.
+            await onComplete();
+            toast.success("Security Credentials Updated. Welcome to the Fleet.");
+        } catch (e) {
+            toast.error("Failed to update credentials");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 text-white overflow-hidden relative">
+            <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:40px_40px] opacity-20"></div>
+            <div className="max-w-md w-full bg-white text-slate-900 rounded-[3rem] p-12 shadow-2xl relative z-10 animate-in zoom-in-95 duration-500">
+                <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mb-8 mx-auto">
+                    <ShieldCheck size={40} />
+                </div>
+                <h1 className="text-3xl font-black text-center uppercase tracking-tighter mb-4">Security Protocol</h1>
+                <p className="text-center text-slate-500 text-xs font-bold uppercase tracking-widest leading-relaxed mb-10">
+                    Your account was initialized by an administrator. Please establish your private secure access credentials.
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Secure Password</label>
+                        <input
+                            type="password"
+                            required
+                            className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
+                        <input
+                            type="password"
+                            required
+                            className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            value={confirm}
+                            onChange={e => setConfirm(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        disabled={loading}
+                        className="w-full py-5 bg-[#0f172a] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50"
+                    >
+                        {loading ? 'Securing Account...' : 'Initialize Access'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Router & Routes ---
 export default function App() {
     return (
@@ -402,7 +541,7 @@ export default function App() {
                     },
                 }}
             />
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
                 <Routes>
                     <Route path="/track" element={<TrackingPage />} />
                     <Route path="/track/:jobId" element={<TrackingPage />} />
@@ -412,4 +551,3 @@ export default function App() {
         </NotificationProvider>
     );
 }
-

@@ -1,7 +1,6 @@
 import React from 'react';
-import { Truck, MapPin, Calendar, FileText, Anchor } from 'lucide-react';
+import { Truck, MapPin, Calendar, FileText, Anchor, X } from 'lucide-react';
 
-// A printable component for BOL
 const BillOfLading = ({ job, onClose }) => {
     if (!job) return null;
 
@@ -10,20 +9,34 @@ const BillOfLading = ({ job, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center overflow-y-auto print:bg-white print:static print:block">
-            <div className="bg-white w-full max-w-4xl min-h-[100vh] sm:min-h-0 sm:h-auto sm:rounded-none shadow-2xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:h-auto print:p-0">
+        <div
+            className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-start sm:items-center justify-center overflow-y-auto p-0 sm:p-4 print:bg-white print:static print:block animate-in fade-in duration-300"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white w-full max-w-4xl min-h-screen sm:min-h-0 sm:h-auto sm:rounded-[2rem] shadow-2xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:h-auto print:p-0 relative">
 
                 {/* No-Print Header */}
-                <div className="bg-slate-800 text-white p-4 flex justify-between items-center print:hidden border-b border-slate-700">
-                    <div>
-                        <h2 className="font-bold text-lg">Bill Of Lading Preview</h2>
-                        <p className="text-xs text-slate-400">Review details before printing.</p>
+                <div className="bg-slate-900 text-white p-4 md:p-6 flex justify-between items-center print:hidden border-b border-white/10 sticky top-0 z-20">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all active:scale-95"
+                        >
+                            <X className="w-5 h-5 text-white" />
+                        </button>
+                        <div>
+                            <h2 className="font-black text-sm md:text-lg uppercase tracking-tight">Bill Of Lading</h2>
+                            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest">Document Preview & Export</p>
+                        </div>
                     </div>
-                    <div className="flex space-x-3">
-                        <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-slate-300 hover:text-white">Close</button>
-                        <button onClick={print} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg flex items-center">
-                            <FileText className="w-4 h-4 mr-2" />
-                            Print / Save PDF
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={print}
+                            className="px-4 md:px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all active:scale-95"
+                        >
+                            <FileText className="w-4 h-4" />
+                            <span className="hidden sm:inline">Print / Save PDF</span>
+                            <span className="sm:hidden">Print</span>
                         </button>
                     </div>
                 </div>

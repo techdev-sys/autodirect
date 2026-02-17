@@ -93,8 +93,8 @@ const BulkUploadModal = ({ onClose, onUpload }) => {
                                 onChange={handleFileChange}
                                 className="absolute inset-0 opacity-0 cursor-pointer"
                             />
-                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <Upload className="w-8 h-8 text-blue-500" />
+                            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Upload className="w-8 h-8 text-primary" />
                             </div>
                             <h3 className="font-bold text-slate-700">Click to Upload CSV</h3>
                             <p className="text-xs text-slate-400 mt-2">Expected columns: Goods, FleetType, Pickup, Dropoff, Tons, Budget</p>
@@ -114,7 +114,7 @@ const BulkUploadModal = ({ onClose, onUpload }) => {
 
                             {status === 'parsing' && (
                                 <div className="text-center py-8">
-                                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500 mb-2" />
+                                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
                                     <p className="text-xs font-bold text-slate-400">Parsing file...</p>
                                 </div>
                             )}
@@ -134,7 +134,7 @@ const BulkUploadModal = ({ onClose, onUpload }) => {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {previewData.map((row, i) => (
-                                                    <tr key={i} className="hover:bg-blue-50/50">
+                                                    <tr key={i} className="hover:bg-orange-50/50">
                                                         <td className="p-3 font-medium">{row.goodsType}</td>
                                                         <td className="p-3 text-slate-500">{row.departure}</td>
                                                         <td className="p-3 text-slate-500">{row.destination}</td>
@@ -167,7 +167,7 @@ const BulkUploadModal = ({ onClose, onUpload }) => {
                     <button
                         onClick={handleUploadDefault}
                         disabled={previewData.length === 0 || status === 'uploading'}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 disabled:opacity-50 flex items-center"
+                        className="px-6 py-3 bg-primary hover:bg-primary-hover text-white font-black rounded-xl shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center"
                     >
                         {status === 'uploading' ? 'Processing...' : `Import ${previewData.length} Jobs`}
                         {status === 'success' && <CheckCircle className="w-4 h-4 ml-2" />}

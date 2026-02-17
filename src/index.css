@@ -3,60 +3,71 @@
 @tailwind utilities;
 
 body {
-  background-color: #F8FAFC !important;
-  /* Light Slate - Force Override */
-  color: #000000 !important;
-  /* Force Pure Black Text */
+  background-color: #F4F2EE !important;
+  /* Warm Neutral Background like reference */
+  color: #1A1A1A !important;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar Styling for Webkit */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #F1F5F9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-
-/* Fallback / Helper Utilities matching new theme */
+/* Custom Utilities for the new "Be.run" inspired theme */
 @layer utilities {
-  .bg-background {
-    background-color: #F8FAFC;
+  .pill-sidebar-item {
+    @apply w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300;
   }
 
-  .bg-surface {
-    background-color: #FFFFFF;
+  .pill-sidebar-container {
+    @apply bg-white p-2 rounded-3xl flex flex-col gap-2 shadow-sm border border-black/5;
   }
 
-  .text-text-main {
-    color: #0F172A;
+  .card-premium-light {
+    @apply bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500;
   }
 
-  .text-text-muted {
-    color: #64748B;
+  .shadow-premium {
+    @apply shadow-[0_20px_50px_rgba(0,0,0,0.04)];
   }
 
-  .glass-effect {
-    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-glass;
+  .card-premium-dark {
+    @apply bg-[#18181B] rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 text-white shadow-xl;
   }
 
-  .premium-card {
-    @apply bg-white rounded-[2rem] border border-slate-100 shadow-premium hover:shadow-premium-hover transition-all duration-500;
+  .card-premium-tint {
+    @apply bg-[#E9E4DB] rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 shadow-sm border border-black/5;
   }
 
-  .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent;
+  .blob-blue {
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.4) 0%, rgba(37, 99, 235, 0) 70%);
+  }
+
+  .blob-cyan {
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, rgba(6, 182, 212, 0) 70%);
+  }
+
+  .blob-indigo {
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.2) 0%, rgba(79, 70, 229, 0) 70%);
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Interactive Universal Magnification */
+  .btn-interact {
+    @apply transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] cursor-pointer;
+  }
+
+  /* Sidebar Tooltip System */
+  .sidebar-tooltip {
+    @apply absolute left-16 px-3 py-2 bg-[#1A1A1A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 invisible -translate-x-2 transition-all duration-300 shadow-xl border border-white/10 z-50 whitespace-nowrap pointer-events-none;
+  }
+
+  .pill-sidebar-item:hover .sidebar-tooltip {
+    @apply opacity-100 visible translate-x-0;
   }
 }
 
