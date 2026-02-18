@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, db } from '../firebaseConfig';
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { Smartphone, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { Smartphone, Mail, Lock, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const LoginPage = () => {
-    const [isSignUp, setIsSignUp] = useState(false);
+const LoginPage = ({ defaultMode = 'signup', onBack }) => {
+    const [isSignUp, setIsSignUp] = useState(defaultMode !== 'login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    // Auth sub-modes
     const [showPhone, setShowPhone] = useState(false);
 
     // Form inputs
@@ -19,6 +17,19 @@ const LoginPage = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
+
+    // Read role hint from sessionStorage to theme the page
+    const hintRole = sessionStorage.getItem('hintRole') || null;
+    const isSupplier = hintRole === 'supplier';
+    const isHauler = hintRole === 'hauler';
+
+    // Theme colours based on role hint
+    const accent = isHauler ? '#2563EB' : '#F97316'; // blue for hauler, orange for supplier/default
+    const accentHover = isHauler ? '#1d4ed8' : '#ea6700';
+    const accentGlow = isHauler ? 'rgba(37,99,235,0.25)' : 'rgba(249,115,22,0.25)';
+    const accentBg = isHauler ? 'rgba(37,99,235,0.08)' : 'rgba(249,115,22,0.08)';
+    const accentBorder = isHauler ? 'rgba(37,99,235,0.35)' : 'rgba(249,115,22,0.35)';
+    const roleLabel = isHauler ? 'Transporter' : isSupplier ? 'Supplier' : null;
 
     useEffect(() => {
         if (showPhone && !window.recaptchaVerifier) {
@@ -32,10 +43,9 @@ const LoginPage = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
             if (isSignUp) {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await createUserWithEmailAndPassword(auth, email, password);
                 toast.success("Account created!");
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
@@ -43,8 +53,12 @@ const LoginPage = () => {
             }
         } catch (err) {
             console.error(err);
-            setError(err.code === 'auth/user-not-found' ? 'No account found' :
-                err.code === 'auth/wrong-password' ? 'Incorrect password' : err.message);
+            setError(
+                err.code === 'auth/user-not-found' ? 'No account found with this email.' :
+                    err.code === 'auth/wrong-password' ? 'Incorrect password. Try again.' :
+                        err.code === 'auth/email-already-in-use' ? 'An account with this email already exists.' :
+                            err.message
+            );
         } finally {
             setLoading(false);
         }
@@ -94,186 +108,453 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white bg-grid-slate flex flex-col items-center justify-center p-6 relative font-sans">
+        <div style={{
+            minHeight: '100vh',
+            background: '#0a0a0a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            position: 'relative',
+            overflow: 'hidden',
+        }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap');
+            `}</style>
+
             <div id="recaptcha-container"></div>
 
-            {/* Main Unified Card */}
-            <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl relative z-10">
+            {/* Background glow based on role */}
+            <div style={{
+                position: 'absolute', top: '-200px', left: '-200px',
+                width: '600px', height: '600px',
+                background: `radial-gradient(circle, ${accentGlow} 0%, transparent 70%)`,
+                pointerEvents: 'none',
+            }} />
+            <div style={{
+                position: 'absolute', bottom: '-200px', right: '-100px',
+                width: '500px', height: '500px',
+                background: `radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)`,
+                pointerEvents: 'none',
+            }} />
 
-                {/* Branding */}
-                <div className="flex flex-col items-center mb-10">
-                    <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mb-4">
-                        <div className="w-6 h-6 bg-orange-500 rounded-sm"></div>
+            {/* Grid overlay */}
+            <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: `linear-gradient(${accentBorder.replace('0.35', '0.04')} 1px, transparent 1px), linear-gradient(90deg, ${accentBorder.replace('0.35', '0.04')} 1px, transparent 1px)`,
+                backgroundSize: '60px 60px',
+                maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)',
+                pointerEvents: 'none',
+            }} />
+
+            {/* Card */}
+            <div style={{
+                width: '100%',
+                maxWidth: '440px',
+                background: '#141414',
+                border: `1px solid ${accentBorder}`,
+                borderRadius: '28px',
+                padding: '40px',
+                position: 'relative',
+                zIndex: 10,
+                boxShadow: `0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px ${accentBorder}`,
+            }}>
+
+                {/* Back button */}
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: '#666', fontSize: '11px', fontWeight: 700,
+                            letterSpacing: '0.15em', textTransform: 'uppercase',
+                            marginBottom: '28px', padding: 0,
+                            fontFamily: "'Barlow Condensed', sans-serif",
+                            transition: 'color 0.2s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#f5f0e8'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#666'}
+                    >
+                        <ArrowLeft size={14} /> Back
+                    </button>
+                )}
+
+                {/* Logo + Role badge */}
+                <div style={{ marginBottom: '32px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                        <div style={{
+                            width: '36px', height: '36px', background: '#000',
+                            borderRadius: '10px', border: `2px solid ${accent}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <div style={{ width: '14px', height: '14px', background: accent, borderRadius: '4px' }} />
+                        </div>
+                        <span style={{
+                            fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em',
+                            textTransform: 'uppercase', color: '#f5f0e8',
+                        }}>
+                            Auto<span style={{ color: accent }}>Direct</span>
+                        </span>
                     </div>
-                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">AutoDirect</h1>
-                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-slate-400 mt-2">Logistics Operating System</p>
+
+                    {roleLabel ? (
+                        <div>
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                background: accentBg, border: `1px solid ${accentBorder}`,
+                                borderRadius: '8px', padding: '6px 14px', marginBottom: '8px',
+                            }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accent }} />
+                                <span style={{
+                                    fontSize: '11px', fontWeight: 800, letterSpacing: '0.2em',
+                                    textTransform: 'uppercase', color: accent,
+                                }}>
+                                    {roleLabel} Account
+                                </span>
+                            </div>
+                            <p style={{
+                                fontFamily: "'Barlow', sans-serif",
+                                fontSize: '14px', color: '#666', marginTop: '4px',
+                            }}>
+                                {isSignUp ? `Create your ${roleLabel.toLowerCase()} account to get started.` : 'Welcome back. Sign in to continue.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <p style={{
+                            fontFamily: "'Barlow', sans-serif",
+                            fontSize: '14px', color: '#666',
+                        }}>
+                            {isSignUp ? 'Create your account to get started.' : 'Welcome back. Sign in to continue.'}
+                        </p>
+                    )}
                 </div>
 
+                {/* Error */}
                 {error && (
-                    <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
+                    <div style={{
+                        marginBottom: '20px', padding: '12px 16px',
+                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px',
+                        color: '#f87171', fontSize: '13px', fontWeight: 600,
+                        fontFamily: "'Barlow', sans-serif",
+                    }}>
+                        <AlertCircle size={14} style={{ flexShrink: 0 }} />
                         {error}
                     </div>
                 )}
 
-                {/* Combined Auth Section */}
+                {/* Login / Signup tabs */}
+                {!showPhone && (
+                    <div style={{ marginBottom: '24px' }}>
+                        <div style={{
+                            display: 'flex', background: '#0a0a0a',
+                            borderRadius: '12px', padding: '4px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                        }}>
+                            {['Log In', 'Sign Up'].map((label, i) => {
+                                const active = i === 0 ? !isSignUp : isSignUp;
+                                return (
+                                    <button
+                                        key={label}
+                                        onClick={() => setIsSignUp(i === 1)}
+                                        style={{
+                                            flex: 1, padding: '10px',
+                                            borderRadius: '9px', border: 'none',
+                                            cursor: 'pointer', transition: 'all 0.2s',
+                                            fontSize: '12px', fontWeight: 800,
+                                            letterSpacing: '0.15em', textTransform: 'uppercase',
+                                            fontFamily: "'Barlow Condensed', sans-serif",
+                                            background: active ? accent : 'transparent',
+                                            color: active ? '#fff' : '#555',
+                                            boxShadow: active ? `0 4px 16px ${accentGlow}` : 'none',
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Email / Phone forms */}
                 {!showPhone ? (
-                    <div className="space-y-6">
-                        {/* Tabs for Email Mode */}
-                        <div className="flex p-1 bg-slate-50 rounded-2xl border border-slate-100">
-                            <button
-                                onClick={() => setIsSignUp(false)}
-                                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${!isSignUp ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400'}`}
-                            >
-                                Log In
-                            </button>
-                            <button
-                                onClick={() => setIsSignUp(true)}
-                                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isSignUp ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400'}`}
-                            >
-                                Sign Up
-                            </button>
+                    <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Email field */}
+                        <div>
+                            <label style={{
+                                display: 'block', marginBottom: '8px',
+                                fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                                textTransform: 'uppercase', color: '#555',
+                            }}>Work Email</label>
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={15} style={{
+                                    position: 'absolute', left: '14px', top: '50%',
+                                    transform: 'translateY(-50%)', color: '#555',
+                                }} />
+                                <input
+                                    type="email"
+                                    placeholder="name@company.com"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%', padding: '14px 14px 14px 42px',
+                                        background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px', color: '#f5f0e8',
+                                        fontSize: '14px', fontFamily: "'Barlow', sans-serif",
+                                        outline: 'none', boxSizing: 'border-box',
+                                        transition: 'border-color 0.2s',
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = accent}
+                                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                />
+                            </div>
                         </div>
 
-                        {/* Email Form */}
-                        <form onSubmit={handleEmailAuth} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Email</label>
-                                <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                                    <input
-                                        type="email"
-                                        placeholder="name@company.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
-                                        required
-                                    />
-                                </div>
+                        {/* Password field */}
+                        <div>
+                            <label style={{
+                                display: 'block', marginBottom: '8px',
+                                fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                                textTransform: 'uppercase', color: '#555',
+                            }}>Password</label>
+                            <div style={{ position: 'relative' }}>
+                                <Lock size={15} style={{
+                                    position: 'absolute', left: '14px', top: '50%',
+                                    transform: 'translateY(-50%)', color: '#555',
+                                }} />
+                                <input
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%', padding: '14px 14px 14px 42px',
+                                        background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px', color: '#f5f0e8',
+                                        fontSize: '14px', fontFamily: "'Barlow', sans-serif",
+                                        outline: 'none', boxSizing: 'border-box',
+                                        transition: 'border-color 0.2s',
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = accent}
+                                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-                                <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                                    <input
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
-                            >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>{isSignUp ? 'Create Corporate Account' : 'Access Dashboard'}</span>}
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+
+                        {/* Submit */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            style={{
+                                width: '100%', padding: '15px',
+                                background: loading ? '#333' : accent,
+                                border: 'none', borderRadius: '12px',
+                                color: '#fff', fontSize: '13px', fontWeight: 800,
+                                letterSpacing: '0.15em', textTransform: 'uppercase',
+                                fontFamily: "'Barlow Condensed', sans-serif",
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: loading ? 'none' : `0 8px 24px ${accentGlow}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                marginTop: '4px',
+                            }}
+                            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = accentHover; }}
+                            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = accent; }}
+                        >
+                            {loading
+                                ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                                : isSignUp ? 'Create Account →' : 'Access Dashboard →'
+                            }
+                        </button>
+                    </form>
                 ) : (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* Phone Auth Flow */}
+                    <div>
                         {!confirmationResult ? (
-                            <form onSubmit={handlePhoneSignIn} className="space-y-6">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Phone Number</label>
-                                    <div className="relative group">
-                                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                            <form onSubmit={handlePhoneSignIn} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{
+                                        display: 'block', marginBottom: '8px',
+                                        fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                                        textTransform: 'uppercase', color: '#555',
+                                    }}>Phone Number</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Smartphone size={15} style={{
+                                            position: 'absolute', left: '14px', top: '50%',
+                                            transform: 'translateY(-50%)', color: '#555',
+                                        }} />
                                         <input
                                             type="tel"
                                             placeholder="+263 77 123 4567"
                                             value={phoneNumber}
-                                            onChange={(e) => setPhoneNumber(e.target.value)}
-                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 transition-all"
+                                            onChange={e => setPhoneNumber(e.target.value)}
                                             required
+                                            style={{
+                                                width: '100%', padding: '14px 14px 14px 42px',
+                                                background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '12px', color: '#f5f0e8',
+                                                fontSize: '14px', fontFamily: "'Barlow', sans-serif",
+                                                outline: 'none', boxSizing: 'border-box',
+                                            }}
                                         />
                                     </div>
-                                    <p className="text-[9px] text-slate-400 mt-2 font-medium">Identity code will be sent via encrypted SMS.</p>
+                                    <p style={{ fontFamily: "'Barlow', sans-serif", fontSize: '12px', color: '#555', marginTop: '6px' }}>
+                                        Code will be sent via SMS. Format: +263...
+                                    </p>
                                 </div>
-                                <div className="flex space-x-3">
+                                <div style={{ display: 'flex', gap: '12px' }}>
                                     <button
                                         type="button"
                                         onClick={() => setShowPhone(false)}
-                                        className="flex-1 py-4 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all"
-                                    >
-                                        Cancel
-                                    </button>
+                                        style={{
+                                            flex: 1, padding: '14px',
+                                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '12px', color: '#666',
+                                            fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em',
+                                            textTransform: 'uppercase', cursor: 'pointer',
+                                            fontFamily: "'Barlow Condensed', sans-serif",
+                                        }}
+                                    >Cancel</button>
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm flex items-center justify-center space-x-2"
+                                        style={{
+                                            flex: 2, padding: '14px',
+                                            background: accent, border: 'none',
+                                            borderRadius: '12px', color: '#fff',
+                                            fontSize: '12px', fontWeight: 800, letterSpacing: '0.1em',
+                                            textTransform: 'uppercase', cursor: 'pointer',
+                                            fontFamily: "'Barlow Condensed', sans-serif",
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}
                                     >
-                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Send Code</span>}
+                                        {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Send Code'}
                                     </button>
                                 </div>
                             </form>
                         ) : (
-                            <form onSubmit={handleVerifyCode} className="space-y-6">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Verification Code</label>
+                            <form onSubmit={handleVerifyCode} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{
+                                        display: 'block', marginBottom: '8px',
+                                        fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                                        textTransform: 'uppercase', color: '#555',
+                                    }}>Verification Code</label>
                                     <input
                                         type="text"
                                         placeholder="000000"
                                         maxLength={6}
                                         value={verificationCode}
-                                        onChange={(e) => setVerificationCode(e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-slate-900 text-center tracking-[0.5em] font-black"
+                                        onChange={e => setVerificationCode(e.target.value)}
                                         required
+                                        style={{
+                                            width: '100%', padding: '14px',
+                                            background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '12px', color: '#f5f0e8',
+                                            fontSize: '20px', fontFamily: "'Barlow Condensed', sans-serif",
+                                            fontWeight: 900, letterSpacing: '0.5em',
+                                            textAlign: 'center', outline: 'none', boxSizing: 'border-box',
+                                        }}
                                     />
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-sm flex items-center justify-center space-x-2 shadow-xl shadow-green-500/20"
+                                    style={{
+                                        width: '100%', padding: '15px',
+                                        background: '#16a34a', border: 'none', borderRadius: '12px',
+                                        color: '#fff', fontSize: '13px', fontWeight: 800,
+                                        letterSpacing: '0.15em', textTransform: 'uppercase',
+                                        fontFamily: "'Barlow Condensed', sans-serif",
+                                        cursor: 'pointer', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center',
+                                    }}
                                 >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Verify Account</span>}
+                                    {loading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Verify & Continue →'}
                                 </button>
                             </form>
                         )}
                     </div>
                 )}
 
-                {/* Social Below Form (Always Visible if not in verify step) */}
+                {/* Divider + Social */}
                 {(!confirmationResult || !showPhone) && (
                     <>
-                        <div className="relative my-8">
-                            <div className="absolute inset-0 flex items-center px-10">
-                                <div className="w-full border-t border-slate-100"></div>
-                            </div>
-                            <span className="relative bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest block mx-auto w-fit">External Identity</span>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '16px',
+                            margin: '24px 0',
+                        }}>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.07)' }} />
+                            <span style={{
+                                fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                                textTransform: 'uppercase', color: '#444',
+                            }}>Or continue with</span>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.07)' }} />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            {/* Google */}
                             <button
                                 onClick={handleGoogleLogin}
-                                className="flex items-center justify-center space-x-2 py-3.5 bg-black text-white rounded-2xl hover:bg-slate-900 active:scale-95 transition-all"
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    padding: '13px', background: '#fff', border: 'none',
+                                    borderRadius: '12px', cursor: 'pointer',
+                                    fontSize: '12px', fontWeight: 700,
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    color: '#111', transition: 'opacity 0.2s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                             >
-                                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                    <path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 1.56-1.56 2.73-3.21 2.73-2.1 0-3.81-1.71-3.81-3.81s1.71-3.81 3.81-3.81c.84 0 1.65.3 2.28.81l2.13-2.13C18.66 6.54 16.5 5.4 14.18 5.4c-4.41 0-8 3.59-8 8s3.59 8 8 8c4.59 0 7.83-3.03 7.83-7.83 0-.48-.06-.93-.15-1.37z" />
+                                <svg width="16" height="16" viewBox="0 0 24 24">
+                                    <path fill="#EA4335" d="M5.26 9.77A7.49 7.49 0 0 1 12 4.5c1.8 0 3.42.65 4.68 1.71L19.9 3C17.95 1.14 15.12 0 12 0 7.31 0 3.26 2.7 1.28 6.63l3.98 3.14z" />
+                                    <path fill="#34A853" d="M16.04 18.01A7.46 7.46 0 0 1 12 19.5c-3.18 0-5.9-1.98-7.04-4.8l-3.97 3.07C3.18 21.24 7.27 24 12 24c3.06 0 5.96-1.1 8.12-3.01l-4.08-2.98z" />
+                                    <path fill="#FBBC05" d="M4.96 14.7A7.5 7.5 0 0 1 4.5 12c0-.94.17-1.84.46-2.68L1 6.18A11.94 11.94 0 0 0 0 12c0 2.02.5 3.92 1.38 5.59l3.58-2.89z" />
+                                    <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l4.08 2.98c2.39-2.21 3.74-5.46 3.74-8.8z" />
                                 </svg>
-                                <span className="text-xs font-bold">Google</span>
+                                Google
                             </button>
+
+                            {/* Phone */}
                             <button
                                 onClick={() => setShowPhone(true)}
-                                className="flex items-center justify-center space-x-2 py-3.5 bg-white border border-slate-200 text-slate-900 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all"
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    padding: '13px', background: 'transparent',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    borderRadius: '12px', cursor: 'pointer',
+                                    fontSize: '12px', fontWeight: 700,
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    color: '#aaa', transition: 'border-color 0.2s, color 0.2s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = '#f5f0e8'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#aaa'; }}
                             >
-                                <Smartphone className="w-4 h-4" />
-                                <span className="text-xs font-bold">Phone</span>
+                                <Smartphone size={15} />
+                                Phone
                             </button>
                         </div>
                     </>
                 )}
 
-                <div className="mt-10 text-center">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
-                        Powered By TechDevs
-                    </p>
-                </div>
+                {/* Footer */}
+                <p style={{
+                    marginTop: '28px', textAlign: 'center',
+                    fontSize: '10px', fontWeight: 800, letterSpacing: '0.2em',
+                    textTransform: 'uppercase', color: '#333',
+                }}>
+                    Powered by TechDevs
+                </p>
             </div>
+
+            <style>{`
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            `}</style>
         </div>
     );
 };

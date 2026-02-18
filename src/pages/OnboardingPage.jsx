@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Truck, ArrowRight, Loader2 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
@@ -6,6 +6,15 @@ import { toast } from 'react-hot-toast';
 
 const OnboardingPage = ({ user, onComplete }) => {
     const [loading, setLoading] = useState(null);
+
+    // If the user clicked a role on the landing page, auto-select it
+    useEffect(() => {
+        const hint = sessionStorage.getItem('hintRole');
+        if (hint) {
+            sessionStorage.removeItem('hintRole');
+            handleSelectRole(hint);
+        }
+    }, []);
 
     const handleSelectRole = async (role) => {
         setLoading(role);

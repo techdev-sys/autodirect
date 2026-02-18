@@ -1,389 +1,549 @@
-import React from 'react';
-import { Wrench, Lock, ShieldCheck, Package, Truck, ArrowRight, Search, ChevronDown, Route, Navigation, Bell, TrendingUp, Share2, MessageSquare, HelpCircle, RefreshCw, Newspaper, Cpu, Mail, Phone, MapPin } from 'lucide-react';
-import RoleCard from '../components/RoleCard';
+import { useState, useEffect, useRef } from "react";
 
-const NavDropdown = ({ label, items }) => (
-    <div className="relative group">
-        <button className="flex items-center space-x-1 hover:text-primary transition-colors py-2 font-bold uppercase tracking-wide">
-            <span>{label}</span>
-            <ChevronDown className="w-3 h-3 transition-transform group-hover:rotate-180" />
-        </button>
-        <div className="absolute top-full left-0 pt-2 w-80 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform group-hover:translate-y-0 translate-y-2 z-50">
-            <div className="bg-white rounded-xl shadow-xl border border-slate-100 p-2 overflow-hidden">
-                {items.map((item, idx) => (
-                    <a
-                        key={idx}
-                        href={item.href || '#'}
-                        onClick={(e) => {
-                            if (item.action) {
-                                e.preventDefault();
-                                item.action();
-                            }
-                        }}
-                        className="flex items-start space-x-3 px-4 py-3 rounded-lg hover:bg-slate-50 transition-colors group/item"
-                    >
-                        {item.icon && (
-                            <div className="mt-0.5 text-blue-500 group-hover/item:text-blue-600">
-                                {item.icon}
-                            </div>
-                        )}
-                        <div>
-                            <div className="text-sm font-bold text-slate-900 group-hover/item:text-primary transition-colors mb-0.5">
-                                {item.label}
-                            </div>
-                            {item.desc && (
-                                <div className="text-xs text-slate-500 font-medium leading-tight">
-                                    {item.desc}
-                                </div>
-                            )}
-                        </div>
-                    </a>
-                ))}
-            </div>
-        </div>
-    </div>
-);
+const NAV_LINKS = ["How It Works", "For Suppliers", "For Transporters", "About Us"];
 
-const WelcomePage = ({ onSelectRole }) => {
+const STATS = [
+    { value: "2,400+", label: "Active Routes" },
+    { value: "98%", label: "On-Time Delivery" },
+    { value: "850+", label: "Verified Fleets" },
+    { value: "14 Countries", label: "Regional Coverage" },
+];
 
-    // Scroll Helper
-    const scrollToSection = (id) => {
+const HOW_IT_WORKS = [
+    { step: "01", title: "Create Your Account", desc: "Sign up as a Supplier or Transporter. Verification takes under 24 hours." },
+    { step: "02", title: "Post or Discover", desc: "Suppliers post cargo. Transporters browse high-value assignments matched to their fleet." },
+    { step: "03", title: "Connect & Move", desc: "Real-time tracking, digital contracts, and instant payments. No middlemen." },
+];
+
+const SUPPLIER_FEATURES = [
+    "Post cargo in under 2 minutes",
+    "Receive competitive bids instantly",
+    "Track shipments in real-time",
+    "Verified, insured transporters only",
+    "Digital invoicing & payments",
+];
+
+const HAULER_FEATURES = [
+    "Browse high-pay cargo near you",
+    "No dead-miles — optimised routing",
+    "Instant payment on delivery",
+    "Fleet management dashboard",
+    "Priority access to premium loads",
+];
+
+// onGetStarted(role?) — navigates to signup/onboarding, optionally with a pre-selected role
+// onLogin — navigates to the login screen
+export default function WelcomePage({ onGetStarted, onLogin }) {
+    const [scrolled, setScrolled] = useState(false);
+    const heroRef = useRef(null);
+
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 40);
+        window.addEventListener("scroll", onScroll);
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+
+    const scrollTo = (id) => {
         const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (el) el.scrollIntoView({ behavior: "smooth" });
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary/20">
-            {/* Navbar */}
-            <nav className="sticky top-0 z-50 glass-effect border-b border-slate-200/50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-                    <div className="flex items-center space-x-3 group cursor-pointer">
-                        <div className="bg-primary p-2 rounded-2xl shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
-                            <Truck className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-2xl font-black tracking-tighter uppercase">Auto<span className="text-primary">Direct</span></span>
-                    </div>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", background: "#0a0a0a", color: "#f5f0e8", overflowX: "hidden" }}>
+            <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@400;500;600&display=swap');
 
-                    <div className="hidden md:flex items-center space-x-8 text-sm pt-1">
-                        <NavDropdown
-                            label="Solutions"
-                            items={[
-                                { label: 'Route Optimization', desc: 'Smarter paths, lower costs', icon: <Route className="w-5 h-5" />, action: () => scrollToSection('features') },
-                                { label: 'Real-time Tracking', desc: 'GPS accuracy for every load', icon: <Navigation className="w-5 h-5" />, action: () => scrollToSection('features') },
-                                { label: 'Secure Payments', desc: 'Instant payouts on delivery', icon: <Lock className="w-5 h-5" />, action: () => scrollToSection('features') },
-                            ]}
-                        />
-                        <NavDropdown
-                            label="Company"
-                            items={[
-                                { label: 'About Us', desc: 'Our mission & vision', icon: <ShieldCheck className="w-5 h-5" />, action: () => scrollToSection('resources') },
-                                { label: 'Press & Media', desc: 'Latest news from AutoDirect', icon: <Newspaper className="w-5 h-5" />, href: '#' },
-                            ]}
-                        />
-                    </div>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-                    <div className="flex items-center space-x-6">
-                        <button onClick={() => window.location.href = "/track"} className="hidden sm:flex items-center text-sm font-bold text-slate-500 hover:text-primary transition-all">
-                            <Search className="w-4 h-4 mr-2" /> Track Shipment
-                        </button>
-                        <button
-                            onClick={() => document.getElementById('get-started').scrollIntoView({ behavior: 'smooth' })}
-                            className="bg-slate-900 hover:bg-black text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/10 transition-all hover:scale-105 active:scale-95"
-                        >
-                            Get Started
-                        </button>
-                    </div>
+        :root {
+          --orange: #F97316;
+          --blue: #2563EB;
+          --dark: #0a0a0a;
+          --off-white: #f5f0e8;
+          --muted: #888;
+          --card-bg: #141414;
+          --border: rgba(255,255,255,0.08);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        .nav-fixed {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+          padding: 20px 40px;
+          display: flex; align-items: center; justify-content: space-between;
+          transition: background 0.3s, backdrop-filter 0.3s, padding 0.3s;
+        }
+        .nav-fixed.scrolled {
+          background: rgba(10,10,10,0.92);
+          backdrop-filter: blur(12px);
+          padding: 14px 40px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+          display: flex; align-items: center; gap: 10px;
+          text-decoration: none; cursor: pointer;
+        }
+        .logo-icon {
+          width: 36px; height: 36px; background: #000;
+          border-radius: 10px; border: 2px solid var(--orange);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .logo-dot {
+          width: 14px; height: 14px; background: var(--orange); border-radius: 4px;
+        }
+        .logo-text {
+          font-size: 20px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
+          color: var(--off-white);
+        }
+        .logo-text span { color: var(--orange); }
+
+        .nav-links { display: flex; gap: 32px; list-style: none; }
+        .nav-links a {
+          font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+          color: var(--muted); text-decoration: none; transition: color 0.2s; cursor: pointer;
+        }
+        .nav-links a:hover { color: var(--off-white); }
+
+        .nav-cta { display: flex; gap: 12px; align-items: center; }
+
+        .btn-ghost {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+          background: transparent; border: 1px solid rgba(255,255,255,0.2);
+          color: var(--off-white); padding: 10px 22px; border-radius: 8px;
+          cursor: pointer; transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-ghost:hover { border-color: var(--off-white); }
+
+        .btn-primary {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 13px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+          background: var(--orange); border: none;
+          color: #fff; padding: 10px 22px; border-radius: 8px;
+          cursor: pointer; transition: background 0.2s, transform 0.15s;
+        }
+        .btn-primary:hover { background: #ea6700; transform: translateY(-1px); }
+
+        /* HERO */
+        .hero {
+          min-height: 100vh;
+          display: flex; flex-direction: column; justify-content: center;
+          padding: 120px 40px 80px;
+          position: relative; overflow: hidden;
+        }
+
+        .hero-grid {
+          position: absolute; inset: 0;
+          background-image:
+            linear-gradient(rgba(249,115,22,0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(249,115,22,0.06) 1px, transparent 1px);
+          background-size: 60px 60px;
+          mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+        }
+
+        .hero-glow-orange {
+          position: absolute; top: -200px; left: -200px;
+          width: 700px; height: 700px;
+          background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .hero-glow-blue {
+          position: absolute; bottom: -200px; right: -100px;
+          width: 600px; height: 600px;
+          background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%);
+          pointer-events: none;
+        }
+
+        .hero-eyebrow {
+          font-size: 12px; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase;
+          color: var(--orange); margin-bottom: 24px;
+          display: flex; align-items: center; gap: 12px;
+        }
+        .hero-eyebrow::before {
+          content: ''; display: block;
+          width: 32px; height: 2px; background: var(--orange);
+        }
+
+        .hero-title {
+          font-size: clamp(64px, 9vw, 130px);
+          font-weight: 900; line-height: 0.92;
+          text-transform: uppercase; letter-spacing: -0.02em;
+          max-width: 900px;
+        }
+        .hero-title .line-orange { color: var(--orange); font-style: italic; }
+        .hero-title .line-blue { color: var(--blue); }
+
+        .hero-sub {
+          font-family: 'Barlow', sans-serif;
+          font-size: 18px; font-weight: 400; line-height: 1.7;
+          color: #aaa; max-width: 480px; margin-top: 32px; margin-bottom: 48px;
+        }
+
+        .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+
+        .btn-lg {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 15px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+          padding: 16px 36px; border-radius: 12px;
+          cursor: pointer; transition: all 0.2s; border: none;
+          display: inline-flex; align-items: center; gap: 10px;
+        }
+        .btn-lg-orange { background: var(--orange); color: #fff; }
+        .btn-lg-orange:hover { background: #ea6700; transform: translateY(-2px); box-shadow: 0 12px 32px rgba(249,115,22,0.35); }
+        .btn-lg-blue { background: var(--blue); color: #fff; }
+        .btn-lg-blue:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 12px 32px rgba(37,99,235,0.35); }
+
+        .hero-badge {
+          margin-top: 80px;
+          display: flex; gap: 0; flex-wrap: wrap;
+          border: 1px solid var(--border); border-radius: 16px;
+          overflow: hidden; max-width: 720px;
+          background: var(--card-bg);
+        }
+        .hero-badge-item {
+          flex: 1; min-width: 140px;
+          padding: 24px 28px;
+          border-right: 1px solid var(--border);
+        }
+        .hero-badge-item:last-child { border-right: none; }
+        .badge-val {
+          font-size: 32px; font-weight: 900; color: var(--off-white);
+          letter-spacing: -0.02em;
+        }
+        .badge-val.orange { color: var(--orange); }
+        .badge-val.blue { color: var(--blue); }
+        .badge-label {
+          font-family: 'Barlow', sans-serif;
+          font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500;
+        }
+
+        /* SECTION SHARED */
+        section { padding: 100px 40px; }
+
+        .section-label {
+          font-size: 11px; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase;
+          color: var(--orange); margin-bottom: 16px;
+        }
+        .section-title {
+          font-size: clamp(36px, 5vw, 64px);
+          font-weight: 900; text-transform: uppercase; line-height: 1;
+          letter-spacing: -0.01em;
+        }
+        .section-body {
+          font-family: 'Barlow', sans-serif;
+          font-size: 17px; color: #999; line-height: 1.7; max-width: 520px; margin-top: 16px;
+        }
+
+        /* HOW IT WORKS */
+        .hiw-grid {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 2px; margin-top: 64px;
+          border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+        }
+        .hiw-card {
+          background: var(--card-bg); padding: 48px 40px;
+          border-right: 1px solid var(--border);
+          transition: background 0.3s;
+        }
+        .hiw-card:last-child { border-right: none; }
+        .hiw-card:hover { background: #1a1a1a; }
+        .hiw-step {
+          font-size: 72px; font-weight: 900; color: rgba(255,255,255,0.06);
+          line-height: 1; margin-bottom: 24px; letter-spacing: -0.04em;
+        }
+        .hiw-title {
+          font-size: 22px; font-weight: 800; text-transform: uppercase;
+          letter-spacing: 0.02em; margin-bottom: 12px;
+        }
+        .hiw-desc {
+          font-family: 'Barlow', sans-serif;
+          font-size: 15px; color: #888; line-height: 1.7;
+        }
+
+        /* DUAL CTA */
+        .dual-cta {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+          margin-top: 0;
+        }
+        @media (max-width: 720px) { .dual-cta { grid-template-columns: 1fr; } }
+
+        .role-card {
+          border-radius: 28px; padding: 56px 48px;
+          position: relative; overflow: hidden; cursor: pointer;
+          transition: transform 0.25s, box-shadow 0.25s;
+          border: none; text-align: left; background: none;
+          color: var(--off-white);
+        }
+        .role-card:hover { transform: translateY(-6px); }
+
+        .role-card-orange {
+          background: linear-gradient(135deg, #1a0e00 0%, #2a1500 100%);
+          border: 2px solid rgba(249,115,22,0.4);
+        }
+        .role-card-orange:hover { box-shadow: 0 24px 60px rgba(249,115,22,0.2); }
+
+        .role-card-blue {
+          background: linear-gradient(135deg, #00081a 0%, #001530 100%);
+          border: 2px solid rgba(37,99,235,0.4);
+        }
+        .role-card-blue:hover { box-shadow: 0 24px 60px rgba(37,99,235,0.2); }
+
+        .role-icon {
+          width: 56px; height: 56px; border-radius: 16px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 26px; margin-bottom: 28px;
+        }
+        .role-icon-orange { background: rgba(249,115,22,0.15); }
+        .role-icon-blue { background: rgba(37,99,235,0.15); }
+
+        .role-title {
+          font-size: 40px; font-weight: 900; text-transform: uppercase;
+          letter-spacing: -0.01em; margin-bottom: 12px;
+        }
+        .role-sub {
+          font-family: 'Barlow', sans-serif;
+          font-size: 15px; color: #888; line-height: 1.7; margin-bottom: 36px;
+        }
+
+        .features-list { list-style: none; margin-bottom: 40px; }
+        .features-list li {
+          font-family: 'Barlow', sans-serif;
+          font-size: 14px; font-weight: 500; padding: 8px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          display: flex; align-items: center; gap: 10px; color: #ccc;
+        }
+        .features-list li::before {
+          content: '✓'; font-size: 12px; font-weight: 700;
+          width: 20px; height: 20px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .list-orange li::before { color: var(--orange); background: rgba(249,115,22,0.1); }
+        .list-blue li::before { color: var(--blue); background: rgba(37,99,235,0.1); }
+
+        .role-cta {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 14px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+          padding: 14px 32px; border-radius: 10px;
+          cursor: pointer; border: none; transition: all 0.2s;
+          display: inline-flex; align-items: center; gap: 8px;
+        }
+        .cta-orange { background: var(--orange); color: #fff; }
+        .cta-orange:hover { background: #ea6700; box-shadow: 0 8px 24px rgba(249,115,22,0.4); }
+        .cta-blue { background: var(--blue); color: #fff; }
+        .cta-blue:hover { background: #1d4ed8; box-shadow: 0 8px 24px rgba(37,99,235,0.4); }
+
+        /* ABOUT */
+        .about-inner {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+        }
+        @media (max-width: 860px) { .about-inner { grid-template-columns: 1fr; gap: 48px; } }
+
+        .about-visual { position: relative; height: 420px; }
+        .about-block {
+          position: absolute; border-radius: 20px; padding: 32px;
+          font-weight: 900; text-transform: uppercase;
+        }
+        .ab1 {
+          top: 0; left: 0; right: 60px; height: 220px;
+          background: linear-gradient(135deg, #1a0e00, #2a1500);
+          border: 1px solid rgba(249,115,22,0.2);
+          display: flex; align-items: flex-end;
+        }
+        .ab2 {
+          bottom: 0; right: 0; left: 60px; height: 200px;
+          background: linear-gradient(135deg, #00081a, #001530);
+          border: 1px solid rgba(37,99,235,0.2);
+          display: flex; align-items: flex-end;
+        }
+        .ab-text { font-size: 48px; line-height: 1; letter-spacing: -0.02em; }
+        .ab-sub { font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 500; color: #666; margin-top: 8px; }
+
+        /* FOOTER */
+        footer {
+          padding: 60px 40px;
+          border-top: 1px solid var(--border);
+          display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;
+        }
+        .footer-text { font-family: 'Barlow', sans-serif; font-size: 13px; color: var(--muted); }
+        .footer-brand { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+        .divider { border: none; height: 1px; background: var(--border); margin: 0 40px; }
+
+        @media (max-width: 640px) {
+          .nav-links { display: none; }
+          .hero { padding: 100px 24px 60px; }
+          section { padding: 72px 24px; }
+          footer { padding: 40px 24px; }
+          hr.divider { margin: 0 24px; }
+          .hero-badge { display: none; }
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.8s ease forwards; }
+        .delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .delay-2 { animation-delay: 0.25s; opacity: 0; }
+        .delay-3 { animation-delay: 0.4s; opacity: 0; }
+        .delay-4 { animation-delay: 0.55s; opacity: 0; }
+      `}</style>
+
+            {/* NAV */}
+            <nav className={`nav-fixed${scrolled ? " scrolled" : ""}`}>
+                <div className="logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                    <div className="logo-icon"><div className="logo-dot"></div></div>
+                    <span className="logo-text">Auto<span>Direct</span></span>
+                </div>
+                <ul className="nav-links">
+                    <li><a onClick={() => scrollTo("how-it-works")}>How It Works</a></li>
+                    <li><a onClick={() => scrollTo("for-suppliers")}>For Suppliers</a></li>
+                    <li><a onClick={() => scrollTo("for-transporters")}>For Transporters</a></li>
+                    <li><a onClick={() => scrollTo("about-us")}>About Us</a></li>
+                </ul>
+                <div className="nav-cta">
+                    <button className="btn-ghost" onClick={onLogin}>Log In</button>
+                    <button className="btn-primary" onClick={() => onGetStarted()}>Get Started →</button>
                 </div>
             </nav>
 
-            {/* Hero Section */}
-            <div className="relative pt-24 pb-32 overflow-hidden">
-                {/* Background Blobs */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-blue-50/50 to-transparent -z-10"></div>
-                <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-blue-400/10 rounded-full blur-[120px] -z-10 animate-pulse-slow"></div>
-                <div className="absolute top-[20%] left-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] -z-10"></div>
+            {/* HERO */}
+            <section className="hero" ref={heroRef} id="hero">
+                <div className="hero-grid"></div>
+                <div className="hero-glow-orange"></div>
+                <div className="hero-glow-blue"></div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                    <div className="space-y-10 text-center lg:text-left">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white border border-slate-200 shadow-sm text-primary text-[10px] font-black uppercase tracking-[0.2em]">
-                            <span className="w-2 h-2 rounded-full bg-primary mr-3 animate-ping"></span>
-                            Live Logistics Network
-                        </div>
-                        <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-slate-900 leading-[0.9] lg:leading-[1]">
-                            The Future of <br />
-                            <span className="gradient-text">Direct Delivery.</span>
-                        </h1>
-                        <p className="text-xl text-slate-500 max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
-                            Connect directly with the world's most reliable transport network. No brokers. No delays. Just direct movement.
-                        </p>
+                <div style={{ position: "relative", zIndex: 2 }}>
+                    <div className="hero-eyebrow fade-up delay-1">The Logistics Marketplace</div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-5">
-                            <button
-                                onClick={() => document.getElementById('get-started').scrollIntoView({ behavior: 'smooth' })}
-                                className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-[1.5rem] font-bold text-lg shadow-2xl shadow-primary/30 hover:bg-primary-hover hover:-translate-y-1 transition-all flex items-center justify-center group"
-                            >
-                                Get Started Now <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                            <button onClick={() => window.location.href = "/track"} className="w-full sm:w-auto px-10 py-5 bg-white text-slate-700 border border-slate-200 rounded-[1.5rem] font-bold text-lg hover:border-slate-300 hover:bg-slate-50 hover:-translate-y-1 transition-all flex items-center justify-center">
-                                Track Order
-                            </button>
-                        </div>
+                    <h1 className="hero-title fade-up delay-2">
+                        Move Cargo.<br />
+                        <span className="line-orange">Move Fast.</span><br />
+                        <span className="line-blue">Move Smart.</span>
+                    </h1>
 
-                        <div className="pt-10 flex items-center justify-center lg:justify-start space-x-10 text-slate-400 opacity-60">
-                            <span className="font-black text-2xl tracking-tighter">logistics<span className="font-light">OS</span></span>
-                            <span className="font-black text-2xl tracking-tighter uppercase opacity-50">Secure<span className="text-primary/50">Pay</span></span>
-                        </div>
-                    </div>
-
-                    {/* Animated Visual */}
-                    <div className="relative lg:h-[700px] flex items-center justify-center">
-                        <div className="relative w-full max-w-lg aspect-square">
-                            {/* Decorative Rings */}
-                            <div className="absolute inset-0 border-[3px] border-slate-200/50 rounded-[3rem] animate-[spin_30s_linear_infinite]"></div>
-                            <div className="absolute inset-[10%] border-2 border-dashed border-slate-300/30 rounded-[2.5rem] animate-[spin_20s_linear_infinite_reverse]"></div>
-
-                            {/* Live Network Activity Card */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] glass-effect rounded-[2.5rem] p-10 rotate-[-2deg] hover:rotate-0 transition-all duration-700 z-10 animate-float shadow-2xl">
-                                <div className="flex justify-between items-center mb-8">
-                                    <div className="space-y-1">
-                                        <h3 className="font-black text-slate-900 text-sm tracking-widest uppercase">Network Activity</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Live Updates</p>
-                                    </div>
-                                    <span className="relative flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                                    </span>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {/* Activity Item 1 */}
-                                    <div className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                                                <MapPin className="w-4 h-4" />
-                                            </div>
-                                            <div className="text-sm font-bold text-slate-700">Harare <span className="text-slate-300 mx-1">→</span> Bulawayo</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">Delivered</div>
-                                            <div className="text-[10px] text-slate-400 font-medium">2m ago</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Activity Item 2 */}
-                                    <div className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
-                                                <MapPin className="w-4 h-4" />
-                                            </div>
-                                            <div className="text-sm font-bold text-slate-700">Mutare <span className="text-slate-300 mx-1">→</span> Gweru</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">En Route</div>
-                                            <div className="text-[10px] text-slate-400 font-medium">15m ago</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Activity Item 3 */}
-                                    <div className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
-                                                <MapPin className="w-4 h-4" />
-                                            </div>
-                                            <div className="text-sm font-bold text-slate-700">Vic Falls <span className="text-slate-300 mx-1">→</span> Hwange</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">Booked</div>
-                                            <div className="text-[10px] text-slate-400 font-medium">1h ago</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            {/* --- Features Section --- */}
-            <div id="features" className="py-24 bg-white relative z-10">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center mb-16">
-                        <span className="text-primary font-black uppercase tracking-widest text-xs mb-2 block">Why AutoDirect?</span>
-                        <h2 className="text-4xl font-black text-slate-900 mb-4">Features built for modern logistics.</h2>
-                        <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
-                            We bridge the gap between heavy shippers and reliable independent haulers efficiently.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Feature 1 */}
-                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
-                            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-primary mb-6">
-                                <Search className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Live Load Board</h3>
-                            <p className="text-slate-500 leading-relaxed">
-                                Access thousands of active shipments instantly. Filter by route, weight, and vehicle type to find the perfect match.
-                            </p>
-                        </div>
-
-                        {/* Feature 2 */}
-                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
-                            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 mb-6">
-                                <ShieldCheck className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Verified Partners</h3>
-                            <p className="text-slate-500 leading-relaxed">
-                                Every hauler and shipper is vetted. We ensure compliance, insurance, and identity verification for peace of mind.
-                            </p>
-                        </div>
-
-                        {/* Feature 3 */}
-                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
-                            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6">
-                                <Truck className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Direct Dispatch</h3>
-                            <p className="text-slate-500 leading-relaxed">
-                                Cut out the broker. Communicate directly with drivers, track shipments in real-time, and pay instantly.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* --- About / Resources Section --- */}
-            <div id="resources" className="py-24 bg-slate-50 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-60"></div>
-
-                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
-                    <div>
-                        <span className="text-primary font-black uppercase tracking-widest text-xs mb-2 block">Our Mission</span>
-                        <h2 className="text-4xl font-black text-slate-900 mb-6">Empowering the supply chain.</h2>
-                        <div className="space-y-6 text-slate-500 text-lg leading-relaxed">
-                            <p>
-                                At <strong className="text-slate-900">AutoDirect</strong>, we believe logistics should be simple, transparent, and profitable for everyone involved.
-                            </p>
-                            <p>
-                                We provide the resources you need to succeed:
-                            </p>
-                            <ul className="space-y-3 mt-4">
-                                <li className="flex items-center space-x-3">
-                                    <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                                    <span>24/7 Support for Haulers & Shippers</span>
-                                </li>
-                                <li className="flex items-center space-x-3">
-                                    <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                                    <span>Automated Invoicing & Proof of Delivery</span>
-                                </li>
-                                <li className="flex items-center space-x-3">
-                                    <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                                    <span>Real-time Market Rate Insights</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="relative">
-                        <div className="aspect-video bg-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border-4 border-white">
-                            {/* Placeholder visual */}
-                            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-                                <div className="text-center">
-                                    <div className="text-5xl font-black text-white mb-2">10k+</div>
-                                    <div className="text-blue-400 font-bold uppercase tracking-widest">Active Loads</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl border border-slate-100 max-w-xs">
-                            <p className="text-sm font-bold text-slate-800 italic">"AutoDirect changed how we move freight. It's simply faster."</p>
-                            <p className="text-xs text-slate-400 mt-2 font-bold uppercase">- Global Logistics Co.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Role Selection (Get Started) */}
-            <div id="get-started" className="py-32 bg-slate-900 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_50%,rgba(37,99,235,0.1),transparent)] pointer-events-none"></div>
-                <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
-                    <h2 className="text-5xl font-black text-white mb-6 tracking-tighter">Start Your Journey</h2>
-                    <p className="text-slate-400 mb-20 text-xl font-medium">Ready to transform your logistics? Choose your path below.</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                        <button
-                            onClick={() => onSelectRole('supplier')}
-                            className="group p-10 rounded-[2.5rem] bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden"
-                        >
-                            <div className="absolute -bottom-10 -right-10 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Package className="w-64 h-64 -rotate-12 text-primary" />
-                            </div>
-                            <div className="relative z-10">
-                                <div className="w-16 h-16 bg-primary rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                                    <Package className="w-8 h-8 text-white" />
-                                </div>
-                                <h3 className="text-3xl font-black text-white mb-4">I am a Supplier</h3>
-                                <p className="text-slate-400 mb-10 text-lg leading-relaxed font-medium">Post loads, manage complex shipments, and track your goods across the globe in real-time.</p>
-                                <div className="inline-flex items-center font-bold text-primary group-hover:translate-x-2 transition-transform bg-primary/10 px-6 py-3 rounded-xl">
-                                    Continue as Supplier <ArrowRight className="w-5 h-5 ml-2" />
-                                </div>
-                            </div>
-                        </button>
-
-                        <button
-                            onClick={() => onSelectRole('hauler')}
-                            className="group p-10 rounded-[2.5rem] bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden"
-                        >
-                            <div className="absolute -bottom-10 -right-10 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Truck className="w-64 h-64 -rotate-12 text-amber-500" />
-                            </div>
-                            <div className="relative z-10">
-                                <div className="w-16 h-16 bg-amber-500 rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                                    <Truck className="w-8 h-8 text-white" />
-                                </div>
-                                <h3 className="text-3xl font-black text-white mb-4">I am a Hauler</h3>
-                                <p className="text-slate-400 mb-10 text-lg leading-relaxed font-medium">Find high-paying loads, optimize your routes, and get paid instantly with our secure payment system.</p>
-                                <div className="inline-flex items-center font-bold text-amber-500 group-hover:translate-x-2 transition-transform bg-amber-500/10 px-6 py-3 rounded-xl">
-                                    Continue as Hauler <ArrowRight className="w-5 h-5 ml-2" />
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* --- Contact Contact --- */}
-            <div id="contact" className="py-20 bg-slate-900 text-white">
-                <div className="max-w-4xl mx-auto px-6 text-center">
-                    <h2 className="text-3xl font-black mb-6">We're here to help.</h2>
-                    <p className="text-slate-400 mb-8 max-w-xl mx-auto">
-                        Have questions? Need a custom logistics solution? Reach out to our team directly.
+                    <p className="hero-sub fade-up delay-3">
+                        AutoDirect connects suppliers with verified transporters across the region — cutting out the middlemen, eliminating dead miles, and getting cargo where it needs to go.
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <div className="bg-white/5 backdrop-blur border border-white/10 px-8 py-4 rounded-2xl">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Email Us</p>
-                            <p className="text-xl font-bold">autodirect@gmail.com</p>
-                        </div>
-                        <div className="bg-white/5 backdrop-blur border border-white/10 px-8 py-4 rounded-2xl">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Call Us</p>
-                            <p className="text-xl font-bold">0781312079</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Simple Footer */}
-            <footer className="bg-slate-50 py-12 border-t border-slate-200">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-slate-400 text-sm font-medium">
-                    <p>&copy; 2024 AutoDirect Logistics. All rights reserved.</p>
-                    <div className="flex space-x-6 mt-4 md:mt-0">
-                        <a href="#" className="hover:text-slate-600">Privacy</a>
-                        <a href="#" className="hover:text-slate-600">Terms</a>
-                        <a href="#" className="hover:text-slate-600">Support</a>
+                    <div className="hero-actions fade-up delay-4">
+                        <button className="btn-lg btn-lg-orange" onClick={() => onGetStarted('supplier')}>
+                            I'm a Supplier →
+                        </button>
+                        <button className="btn-lg btn-lg-blue" onClick={() => onGetStarted('hauler')}>
+                            I'm a Transporter →
+                        </button>
+                    </div>
+
+                    <div className="hero-badge fade-up delay-4">
+                        {STATS.map((s, i) => (
+                            <div className="hero-badge-item" key={s.label}>
+                                <div className={`badge-val ${i % 2 === 0 ? "orange" : "blue"}`}>{s.value}</div>
+                                <div className="badge-label">{s.label}</div>
+                            </div>
+                        ))}
                     </div>
                 </div>
+            </section>
+
+            <hr className="divider" />
+
+            {/* HOW IT WORKS */}
+            <section id="how-it-works">
+                <div className="section-label">Simple Process</div>
+                <h2 className="section-title">How It Works</h2>
+                <p className="section-body">Three steps to connect your business with the right logistics partner — in minutes, not days.</p>
+                <div className="hiw-grid">
+                    {HOW_IT_WORKS.map(item => (
+                        <div className="hiw-card" key={item.step}>
+                            <div className="hiw-step">{item.step}</div>
+                            <div className="hiw-title">{item.title}</div>
+                            <div className="hiw-desc">{item.desc}</div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <hr className="divider" />
+
+            {/* DUAL ROLE CTA */}
+            <section id="for-suppliers">
+                <div className="section-label">Pick Your Role</div>
+                <h2 className="section-title">Built For Both Sides</h2>
+                <p className="section-body" style={{ marginBottom: "56px" }}>Whether you're moving goods or moving trucks, AutoDirect has the tools you need.</p>
+
+                <div className="dual-cta">
+                    {/* Supplier */}
+                    <button className="role-card role-card-orange" onClick={() => onGetStarted('supplier')}>
+                        <div className="role-icon role-icon-orange">📦</div>
+                        <div className="role-title" style={{ color: "var(--orange)" }}>Supplier</div>
+                        <p className="role-sub">You have cargo. We have the network. Post shipments and receive competitive bids from verified transporters — fast.</p>
+                        <ul className="features-list list-orange">
+                            {SUPPLIER_FEATURES.map(f => <li key={f}>{f}</li>)}
+                        </ul>
+                        <span className="role-cta cta-orange">Start as Supplier →</span>
+                    </button>
+
+                    {/* Transporter */}
+                    <button className="role-card role-card-blue" id="for-transporters" onClick={() => onGetStarted('hauler')}>
+                        <div className="role-icon role-icon-blue">🚛</div>
+                        <div className="role-title" style={{ color: "var(--blue)" }}>Transporter</div>
+                        <p className="role-sub">Fill your trucks with high-value cargo. Discover assignments matched to your fleet size, route, and availability — no cold calling.</p>
+                        <ul className="features-list list-blue">
+                            {HAULER_FEATURES.map(f => <li key={f}>{f}</li>)}
+                        </ul>
+                        <span className="role-cta cta-blue">Start as Transporter →</span>
+                    </button>
+                </div>
+            </section>
+
+            <hr className="divider" />
+
+            {/* ABOUT */}
+            <section id="about-us">
+                <div className="about-inner">
+                    <div>
+                        <div className="section-label">About AutoDirect</div>
+                        <h2 className="section-title">Logistics,<br />Reimagined</h2>
+                        <p className="section-body" style={{ marginTop: "24px" }}>
+                            AutoDirect was built to solve a real problem: suppliers couldn't find reliable transporters fast, and haulers were running half-empty trucks on expensive routes.
+                        </p>
+                        <p className="section-body" style={{ marginTop: "16px" }}>
+                            We built a marketplace that works for both sides — transparent pricing, real-time tracking, verified profiles, and instant payments. No brokers. No phone tag. Just freight moving efficiently.
+                        </p>
+                        <button className="btn-lg btn-lg-orange" style={{ marginTop: "40px" }} onClick={() => onGetStarted()}>
+                            Join AutoDirect →
+                        </button>
+                    </div>
+                    <div className="about-visual">
+                        <div className="ab1">
+                            <div>
+                                <div className="ab-text" style={{ color: "var(--orange)" }}>Suppliers<br />First</div>
+                                <div className="ab-sub">Fast posting. Verified bids. Zero hassle.</div>
+                            </div>
+                        </div>
+                        <div className="ab2">
+                            <div>
+                                <div className="ab-text" style={{ color: "var(--blue)" }}>Haulers<br />Win More</div>
+                                <div className="ab-sub">Better loads. Smarter routes. More pay.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <hr className="divider" />
+
+            {/* FOOTER */}
+            <footer>
+                <div className="logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                    <div className="logo-icon"><div className="logo-dot"></div></div>
+                    <span className="logo-text">Auto<span>Direct</span></span>
+                </div>
+                <p className="footer-text">© 2025 AutoDirect. All rights reserved.</p>
+                <p className="footer-brand">Powered by TechDevs</p>
             </footer>
         </div>
     );
-};
-
-export default WelcomePage;
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ShieldCheck, LogOut, Settings, Users, Package, Truck, Bell, Search, Menu, X } from 'lucide-react';
-import LandingPage from './pages/LandingPage';
+import WelcomePage from './pages/WelcomePage';
 import SupplierDashboard from './pages/SupplierDashboard';
 import HaulerDashboard from './pages/HaulerDashboard';
 import LoginPage from './pages/LoginPage';
@@ -23,7 +23,7 @@ function DashboardApp() {
     const [authLoading, setAuthLoading] = useState(true);
 
     const [role, setRole] = useState(null);
-    const [view, setView] = useState('landing'); // landing
+    const [view, setView] = useState('welcome'); // welcome | auth | login
     const [activeTab, setActiveTab] = useState('board');
     const [transportJobs, setTransportJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -320,14 +320,23 @@ function DashboardApp() {
         </div>
     );
 
-    // 1. Landing Screen
-    if (!user && view === 'landing') {
-        return <LandingPage onGetStarted={() => setView('auth')} />;
+    // 1. Welcome / Marketing Landing Screen
+    if (!user && view === 'welcome') {
+        return (
+            <WelcomePage
+                onGetStarted={(role) => {
+                    // Store the role hint so OnboardingPage can pre-select it
+                    if (role) sessionStorage.setItem('hintRole', role);
+                    setView('auth');
+                }}
+                onLogin={() => setView('login')}
+            />
+        );
     }
 
-    // 2. Login
+    // 2. Login / Sign-up
     if (!user) {
-        return <LoginPage />;
+        return <LoginPage defaultMode={view === 'login' ? 'login' : 'signup'} onBack={() => setView('welcome')} />;
     }
 
     // NEW: Force Password Reset (Driver Onboarding)
